@@ -195,7 +195,7 @@ function QuizTaker({ assessmentId, userId, onBack, onComplete }: { assessmentId:
     queryFn: async () => {
       const { data, error } = await supabase
         .from("questions")
-        .select("id, question_text, options, marks, position")
+        .select("id, question_text, options, correct_option, marks, position")
         .eq("assessment_id", assessmentId)
         .order("position", { ascending: true });
       if (error) throw error;
