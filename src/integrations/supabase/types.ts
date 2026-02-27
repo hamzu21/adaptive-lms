@@ -360,6 +360,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_assessment_teacher: {
+        Args: { _assessment_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_course_teacher: {
+        Args: { _course_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_enrolled: {
+        Args: { _course_id: string; _student_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "student" | "teacher" | "parent" | "admin"
