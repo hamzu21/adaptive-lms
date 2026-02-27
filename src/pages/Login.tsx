@@ -5,21 +5,39 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BookOpen, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { role } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login — navigate based on demo accounts
-    if (email.includes("teacher")) navigate("/teacher");
-    else if (email.includes("parent")) navigate("/parent");
-    else if (email.includes("admin")) navigate("/admin");
-    else navigate("/student");
+    setSubmitting(true);
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      toast.error(error.message);
+      setSubmitting(false);
+      return;
+    }
+
+    toast.success("Logged in successfully!");
+    // Role will be fetched by AuthContext, redirect handled by effect below
   };
+
+  // Redirect when role is available after login
+  const { user } = useAuth();
+  if (user && role) {
+    navigate(`/${role}`, { replace: true });
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
@@ -75,7 +93,9 @@ const Login = () => {
                 </button>
               </div>
             </div>
-            <Button type="submit" className="w-full">Sign In</Button>
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? "Signing in..." : "Sign In"}
+            </Button>
           </form>
 
           <p className="text-center text-sm text-muted-foreground mt-6">
@@ -84,12 +104,6 @@ const Login = () => {
               Sign Up
             </Link>
           </p>
-
-          <div className="mt-4 p-3 rounded-lg bg-secondary text-xs text-secondary-foreground">
-            <p className="font-medium mb-1">Demo Accounts:</p>
-            <p>student@demo.com • teacher@demo.com</p>
-            <p>parent@demo.com • admin@demo.com</p>
-          </div>
         </div>
       </motion.div>
     </div>

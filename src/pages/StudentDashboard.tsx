@@ -32,7 +32,7 @@ const stats = [
 
 const StudentDashboard = () => {
   return (
-    <DashboardLayout title="Student Dashboard" navItems={navItems} userName="Ayesha Javaid" userRole="student">
+    <DashboardLayout title="Student Dashboard" navItems={navItems}>
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((s, i) => (
@@ -55,7 +55,6 @@ const StudentDashboard = () => {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Courses */}
         <div className="lg:col-span-2 bg-card rounded-xl border border-border p-6">
           <h2 className="text-lg font-semibold mb-4">My Courses</h2>
           <div className="space-y-4">
@@ -75,7 +74,6 @@ const StudentDashboard = () => {
           </div>
         </div>
 
-        {/* Recommendations */}
         <div className="bg-card rounded-xl border border-border p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Target className="w-5 h-5 text-primary" /> AI Recommendations
