@@ -166,17 +166,93 @@ export function useAdminStats() {
   return useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const [usersRes, coursesRes, studentsRes, teachersRes] = await Promise.all([
+      const [usersRes, coursesRes, studentsRes, teachersRes, enrollmentsRes, assessmentsRes] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("courses").select("id", { count: "exact", head: true }),
         supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "student"),
         supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "teacher"),
+        supabase.from("enrollments").select("id", { count: "exact", head: true }),
+        supabase.from("assessments").select("id", { count: "exact", head: true }),
       ]);
+
+      // Recent users (last 10)
+      const { data: recentProfiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, created_at")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      const userIds = (recentProfiles || []).map((p) => p.user_id);
+      const { data: roles } = userIds.length > 0
+        ? await supabase.from("user_roles").select("user_id, role").in("user_id", userIds)
+        : { data: [] };
+
+      const roleMap: Record<string, string> = {};
+      (roles || []).forEach((r: any) => { roleMap[r.user_id] = r.role; });
+
+      const recentUsers = (recentProfiles || []).map((p) => ({
+        name: p.full_name || "Unknown",
+        role: roleMap[p.user_id] || "student",
+        joinedAt: p.created_at,
+      }));
+
+      // Enrollment trends (last 14 days)
+      const fourteenDaysAgo = new Date();
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 13);
+      fourteenDaysAgo.setHours(0, 0, 0, 0);
+
+      const { data: recentEnrollments } = await supabase
+        .from("enrollments")
+        .select("enrolled_at")
+        .gte("enrolled_at", fourteenDaysAgo.toISOString());
+
+      const enrollmentByDay: Record<string, number> = {};
+      for (let i = 0; i < 14; i++) {
+        const d = new Date(fourteenDaysAgo);
+        d.setDate(d.getDate() + i);
+        enrollmentByDay[d.toISOString().split("T")[0]] = 0;
+      }
+      (recentEnrollments || []).forEach((e: any) => {
+        const day = new Date(e.enrolled_at).toISOString().split("T")[0];
+        if (enrollmentByDay[day] !== undefined) enrollmentByDay[day]++;
+      });
+
+      const enrollmentTrend = Object.entries(enrollmentByDay).map(([date, count]) => ({
+        date,
+        label: new Date(date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        count,
+      }));
+
+      // Course distribution by subject
+      const { data: allCourses } = await supabase.from("courses").select("subject");
+      const subjectCounts: Record<string, number> = {};
+      (allCourses || []).forEach((c: any) => {
+        const s = c.subject || "Uncategorized";
+        subjectCounts[s] = (subjectCounts[s] || 0) + 1;
+      });
+      const courseDistribution = Object.entries(subjectCounts).map(([subject, count]) => ({ subject, count }));
+
+      // Assessment stats
+      const { data: attempts } = await supabase
+        .from("assessment_attempts")
+        .select("score, total_marks, completed_at");
+      const completedAttempts = (attempts || []).filter((a: any) => a.completed_at);
+      const avgScore = completedAttempts.length > 0
+        ? Math.round(completedAttempts.reduce((s, a: any) => s + ((a.score || 0) / (a.total_marks || 1)) * 100, 0) / completedAttempts.length)
+        : 0;
+
       return {
         totalUsers: usersRes.count || 0,
         activeCourses: coursesRes.count || 0,
         students: studentsRes.count || 0,
         teachers: teachersRes.count || 0,
+        totalEnrollments: enrollmentsRes.count || 0,
+        totalAssessments: assessmentsRes.count || 0,
+        recentUsers,
+        enrollmentTrend,
+        courseDistribution,
+        completedAttempts: completedAttempts.length,
+        avgScore,
       };
     },
   });
