@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -38,8 +39,9 @@ interface CourseForm {
 const TeacherCourses = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(searchParams.get("create") === "true");
   const [form, setForm] = useState<CourseForm>({ title: "", description: "", subject: "", is_published: false });
   const [lessons, setLessons] = useState<Lesson[]>([]);
 
