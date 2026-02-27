@@ -9,6 +9,7 @@ const navItems = [
   { label: "My Classes", href: "/teacher/classes", icon: <Users className="w-4 h-4" /> },
   { label: "Courses", href: "/teacher/courses", icon: <BookOpen className="w-4 h-4" /> },
   { label: "Assessments", href: "/teacher/assessments", icon: <FileText className="w-4 h-4" /> },
+  { label: "Analytics", href: "/teacher/analytics", icon: <TrendingUp className="w-4 h-4" /> },
 ];
 
 const TeacherDashboard = () => {
