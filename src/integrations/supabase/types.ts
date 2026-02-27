@@ -370,6 +370,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      find_student_by_name: { Args: { _name: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
