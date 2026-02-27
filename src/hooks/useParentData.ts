@@ -35,35 +35,24 @@ export function useAddChild() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (childName: string) => {
-      // Find student by name
-      const { data: studentRoles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "student");
-      if (!studentRoles || studentRoles.length === 0) throw new Error("No students found");
-
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name")
-        .in("user_id", studentRoles.map((r) => r.user_id));
-
-      const match = (profiles || []).find(
-        (p) => p.full_name.toLowerCase() === childName.trim().toLowerCase()
-      );
-      if (!match) throw new Error("Student not found. Enter the exact registered name.");
+      // Find student by name using secure RPC function
+      const { data: studentId, error: rpcErr } = await supabase
+        .rpc("find_student_by_name", { _name: childName.trim() });
+      if (rpcErr) throw rpcErr;
+      if (!studentId) throw new Error("Student not found. Enter the exact registered name.");
 
       // Check not already linked
       const { data: existing } = await supabase
         .from("parent_children")
         .select("id")
         .eq("parent_id", user!.id)
-        .eq("child_id", match.user_id)
+        .eq("child_id", studentId)
         .maybeSingle();
       if (existing) throw new Error("This child is already linked to your account.");
 
       const { error } = await supabase
         .from("parent_children")
-        .insert({ parent_id: user!.id, child_id: match.user_id });
+        .insert({ parent_id: user!.id, child_id: studentId });
       if (error) throw error;
     },
     onSuccess: () => {
