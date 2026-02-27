@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import StudentDashboard from "./pages/StudentDashboard";
+import StudentCourses from "./pages/StudentCourses";
+import StudentCourseDetail from "./pages/StudentCourseDetail";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherCourses from "./pages/TeacherCourses";
 import TeacherEnrollments from "./pages/TeacherEnrollments";
@@ -31,6 +33,8 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/student" element={<ProtectedRoute allowedRoles={["student"]}><StudentDashboard /></ProtectedRoute>} />
+            <Route path="/student/courses" element={<ProtectedRoute allowedRoles={["student"]}><StudentCourses /></ProtectedRoute>} />
+            <Route path="/student/courses/:courseId" element={<ProtectedRoute allowedRoles={["student"]}><StudentCourseDetail /></ProtectedRoute>} />
             <Route path="/student/*" element={<ProtectedRoute allowedRoles={["student"]}><StudentDashboard /></ProtectedRoute>} />
             <Route path="/teacher" element={<ProtectedRoute allowedRoles={["teacher"]}><TeacherDashboard /></ProtectedRoute>} />
             <Route path="/teacher/courses" element={<ProtectedRoute allowedRoles={["teacher"]}><TeacherCourses /></ProtectedRoute>} />
