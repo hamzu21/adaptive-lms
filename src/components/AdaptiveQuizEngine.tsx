@@ -125,12 +125,16 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
     queryKey: ["quiz-questions-adaptive", assessmentId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("questions")
-        .select("id, question_text, options, marks, position, difficulty")
-        .eq("assessment_id", assessmentId)
-        .order("position", { ascending: true });
+        .rpc("get_quiz_questions", { _assessment_id: assessmentId });
       if (error) throw error;
-      return (data || []) as Question[];
+      return ((data || []) as any[]).map((q: any) => ({
+        id: q.out_id,
+        question_text: q.out_question_text,
+        options: q.out_options,
+        marks: q.out_marks,
+        position: q.out_position,
+        difficulty: q.out_difficulty,
+      })) as Question[];
     },
   });
 
