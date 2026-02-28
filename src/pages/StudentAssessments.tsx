@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, BarChart3, FileText, TrendingUp, CheckCircle2, Clock, ArrowLeft, AlertCircle, ClipboardList } from "lucide-react";
+import { BookOpen, BarChart3, FileText, TrendingUp, CheckCircle2, Clock, ArrowLeft, AlertCircle, ClipboardList, Bot } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -19,6 +19,7 @@ const navItems = [
   { label: "Assessments", href: "/student/assessments", icon: <FileText className="w-4 h-4" /> },
   { label: "Assignments", href: "/student/assignments", icon: <ClipboardList className="w-4 h-4" /> },
   { label: "Progress", href: "/student/progress", icon: <TrendingUp className="w-4 h-4" /> },
+  { label: "AI Assistant", href: "/student/ai-chat", icon: <Bot className="w-4 h-4" /> },
 ];
 
 type ViewState =

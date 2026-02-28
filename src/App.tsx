@@ -13,6 +13,7 @@ import StudentCourses from "./pages/StudentCourses";
 import StudentCourseDetail from "./pages/StudentCourseDetail";
 import StudentAssessments from "./pages/StudentAssessments";
 import StudentAssignmentsPage from "./pages/StudentAssignments";
+import StudentAIChat from "./pages/StudentAIChat";
 import StudentProgress from "./pages/StudentProgress";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherCourses from "./pages/TeacherCourses";
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/student/assessments" element={<ProtectedRoute allowedRoles={["student"]}><StudentAssessments /></ProtectedRoute>} />
             <Route path="/student/assignments" element={<ProtectedRoute allowedRoles={["student"]}><StudentAssignmentsPage /></ProtectedRoute>} />
             <Route path="/student/progress" element={<ProtectedRoute allowedRoles={["student"]}><StudentProgress /></ProtectedRoute>} />
+            <Route path="/student/ai-chat" element={<ProtectedRoute allowedRoles={["student"]}><StudentAIChat /></ProtectedRoute>} />
             <Route path="/student/*" element={<ProtectedRoute allowedRoles={["student"]}><StudentDashboard /></ProtectedRoute>} />
             <Route path="/teacher" element={<ProtectedRoute allowedRoles={["teacher"]}><TeacherDashboard /></ProtectedRoute>} />
             <Route path="/teacher/courses" element={<ProtectedRoute allowedRoles={["teacher"]}><TeacherCourses /></ProtectedRoute>} />
