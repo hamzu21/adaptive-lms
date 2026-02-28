@@ -3,7 +3,7 @@ import { useAIAnalysis, type LearningPathItem, type DifficultyProfile } from "@/
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
-import { Route, Gauge, ArrowRight, BookOpen, AlertTriangle, Zap, Target } from "lucide-react";
+import { Route, Gauge, ArrowRight, BookOpen, AlertTriangle, Zap, Target, PartyPopper, Trophy, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const difficultyConfig = {
@@ -152,6 +152,45 @@ export default function AdaptiveLearningPath() {
     <div className="space-y-4">
       {/* Difficulty Profile */}
       {hasProfile && <DifficultyProfileCard profile={data.difficultyProfile!} />}
+
+      {/* Celebration card when no recommendations */}
+      {!hasPath && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+          className="relative overflow-hidden bg-card rounded-xl border border-primary/20 p-6"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-emerald-500/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+
+          <div className="relative flex flex-col items-center text-center gap-3">
+            <motion.div
+              animate={{ rotate: [0, -10, 10, -10, 0] }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center"
+            >
+              <PartyPopper className="w-8 h-8 text-primary" />
+            </motion.div>
+
+            <h3 className="text-lg font-bold">All Caught Up 🎉</h3>
+            <p className="text-sm text-muted-foreground max-w-md">
+              You've completed every lesson and aced all your latest quizzes. There's nothing left to recommend — you're ahead of the curve!
+            </p>
+
+            <div className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+                <Trophy className="w-4 h-4" />
+                <span className="font-medium">Perfect Scores</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-primary">
+                <Sparkles className="w-4 h-4" />
+                <span className="font-medium">All Lessons Done</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Learning Path */}
       {hasPath && (
