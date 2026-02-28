@@ -3,12 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, BarChart3, Users, FileText, TrendingUp, ChevronDown, CheckCircle2, XCircle, ClipboardList } from "lucide-react";
+import { BookOpen, BarChart3, Users, FileText, TrendingUp, ChevronDown, CheckCircle2, XCircle, ClipboardList, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { exportCSV, exportPDF } from "@/lib/exportUtils";
+import { toast } from "sonner";
 
 const navItems = [
   { label: "Dashboard", href: "/teacher", icon: <BarChart3 className="w-4 h-4" /> },
@@ -193,6 +197,66 @@ const TeacherAnalytics = () => {
             </div>
           ) : (
             <>
+              {/* Export buttons */}
+              <div className="flex justify-end gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Download className="w-4 h-4" /> Export Scores
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => {
+                      const selectedAssessment = assessments?.find((a) => a.id === selectedAssessmentId);
+                      const headers = ["Student", "Score", "Total Marks", "Percentage", "Result"];
+                      const rows = analytics.studentScores.map((s) => [s.name, s.score, s.totalMarks, `${s.percentage}%`, s.passed ? "Pass" : "Fail"]);
+                      exportCSV(`class-scores-${selectedAssessment?.title || "report"}`, headers, rows);
+                      toast.success("Scores exported as CSV");
+                    }}>Download CSV</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      const selectedAssessment = assessments?.find((a) => a.id === selectedAssessmentId);
+                      const headers = ["Student", "Score", "Total Marks", "Percentage", "Result"];
+                      const rows = analytics.studentScores.map((s) => [s.name, s.score, s.totalMarks, `${s.percentage}%`, s.passed ? "Pass" : "Fail"]);
+                      exportPDF(
+                        `class-scores-${selectedAssessment?.title || "report"}`,
+                        `Class Scores — ${selectedAssessment?.title || "Assessment"}`,
+                        `Course: ${selectedAssessment?.courseName || "—"} · Avg: ${analytics.avgScore}% · Pass Rate: ${analytics.passRate}%`,
+                        headers, rows
+                      );
+                      toast.success("Scores exported as PDF");
+                    }}>Download PDF</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Download className="w-4 h-4" /> Export Questions
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => {
+                      const selectedAssessment = assessments?.find((a) => a.id === selectedAssessmentId);
+                      const headers = ["Q#", "Question", "Correct", "Total Responses", "Accuracy", "Marks"];
+                      const rows = analytics.questions.map((q) => [`Q${q.position}`, q.text, q.correctResponses, q.totalResponses, `${q.accuracy}%`, q.marks]);
+                      exportCSV(`question-analytics-${selectedAssessment?.title || "report"}`, headers, rows);
+                      toast.success("Question analytics exported as CSV");
+                    }}>Download CSV</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      const selectedAssessment = assessments?.find((a) => a.id === selectedAssessmentId);
+                      const headers = ["Q#", "Question", "Correct", "Total", "Accuracy", "Marks"];
+                      const rows = analytics.questions.map((q) => [`Q${q.position}`, q.text, q.correctResponses, q.totalResponses, `${q.accuracy}%`, q.marks]);
+                      exportPDF(
+                        `question-analytics-${selectedAssessment?.title || "report"}`,
+                        `Question Performance — ${selectedAssessment?.title || "Assessment"}`,
+                        `Course: ${selectedAssessment?.courseName || "—"} · ${analytics.questions.length} questions · ${analytics.attempts} total attempts`,
+                        headers, rows, { orientation: "landscape" }
+                      );
+                      toast.success("Question analytics exported as PDF");
+                    }}>Download PDF</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
               {/* Summary stats */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[

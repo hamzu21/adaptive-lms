@@ -2,12 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, BarChart3, FileText, TrendingUp, Award, Brain, Clock, CheckCircle2, XCircle, ClipboardList, Bot } from "lucide-react";
+import { BookOpen, BarChart3, FileText, TrendingUp, Award, Brain, Clock, CheckCircle2, XCircle, ClipboardList, Bot, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { exportCSV, exportPDF } from "@/lib/exportUtils";
+import { toast } from "sonner";
 
 const navItems = [
   { label: "Dashboard", href: "/student", icon: <BarChart3 className="w-4 h-4" /> },
@@ -144,6 +148,30 @@ const StudentProgress = () => {
 
   const maxTrend = Math.max(...(data?.trend?.map((t) => t.count) || [1]), 1);
 
+  const handleExportProgress = (type: "csv" | "pdf") => {
+    if (!data) return;
+    const headers = ["Course", "Subject", "Lessons Done", "Total Lessons", "Progress %"];
+    const rows = data.courseStats.map((c) => [c.title, c.subject, c.completedLessons, c.totalLessons, `${c.progress}%`]);
+    if (type === "csv") {
+      exportCSV("student-progress-report", headers, rows);
+    } else {
+      exportPDF("student-progress-report", "Student Progress Report", `Courses: ${data.totalCourses} · Lessons: ${data.completedLessons}/${data.totalLessons} · Avg Quiz: ${data.avgQuizScore}%`, headers, rows);
+    }
+    toast.success(`Progress report exported as ${type.toUpperCase()}`);
+  };
+
+  const handleExportQuizHistory = (type: "csv" | "pdf") => {
+    if (!data) return;
+    const headers = ["Assessment", "Course", "Score", "Total", "Percentage", "Result", "Date"];
+    const rows = data.quizHistory.map((q) => [q.assessmentTitle, q.courseName, q.score, q.totalMarks, `${q.percentage}%`, q.passed ? "Pass" : "Fail", format(new Date(q.completedAt), "MMM d, yyyy")]);
+    if (type === "csv") {
+      exportCSV("quiz-history", headers, rows);
+    } else {
+      exportPDF("quiz-history", "Quiz History Report", `Total Quizzes: ${data.totalQuizzes} · Average: ${data.avgQuizScore}% · Passed: ${data.passedQuizzes}/${data.totalQuizzes}`, headers, rows);
+    }
+    toast.success(`Quiz history exported as ${type.toUpperCase()}`);
+  };
+
   return (
     <DashboardLayout title="My Progress" navItems={navItems}>
       {isLoading ? (
@@ -156,6 +184,32 @@ const StudentProgress = () => {
         </div>
       ) : data ? (
         <div className="space-y-6">
+          {/* Export buttons */}
+          <div className="flex justify-end gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Download className="w-4 h-4" /> Export Progress
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleExportProgress("csv")}>Download CSV</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportProgress("pdf")}>Download PDF</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Download className="w-4 h-4" /> Export Quiz History
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleExportQuizHistory("csv")}>Download CSV</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportQuizHistory("pdf")}>Download PDF</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {statCards.map((s, i) => (
