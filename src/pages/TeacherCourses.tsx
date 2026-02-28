@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, BarChart3, Users, FileText, Plus, Trash2, GripVertical, Eye, EyeOff, ArrowLeft, Save, TrendingUp, ClipboardList } from "lucide-react";
+import { BookOpen, BarChart3, Users, FileText, Plus, Trash2, GripVertical, Eye, EyeOff, ArrowLeft, Save, TrendingUp, ClipboardList, Video, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +28,9 @@ interface Lesson {
   content: string;
   position: number;
   isNew?: boolean;
+  video_url: string;
+  video_file_url: string;
+  _videoFile?: File | null;
 }
 
 interface CourseForm {
@@ -86,11 +89,22 @@ const TeacherCourses = () => {
       const existingLessons = lessons.filter((l) => l.id && !l.isNew);
       const newLessons = lessons.filter((l) => !l.id || l.isNew);
 
+      // Upload video files first
+      for (const lesson of lessons) {
+        if (lesson._videoFile) {
+          const filePath = `${courseId}/${Date.now()}-${lesson._videoFile.name}`;
+          const { error: uploadError } = await supabase.storage.from("lesson-videos").upload(filePath, lesson._videoFile);
+          if (uploadError) throw uploadError;
+          const { data: urlData } = supabase.storage.from("lesson-videos").getPublicUrl(filePath);
+          lesson.video_file_url = urlData.publicUrl;
+        }
+      }
+
       // Update existing lessons
       for (const lesson of existingLessons) {
         await supabase
           .from("lessons")
-          .update({ title: lesson.title, content: lesson.content, position: lesson.position })
+          .update({ title: lesson.title, content: lesson.content, position: lesson.position, video_url: lesson.video_url, video_file_url: lesson.video_file_url })
           .eq("id", lesson.id!);
       }
 
@@ -102,6 +116,8 @@ const TeacherCourses = () => {
             title: l.title,
             content: l.content,
             position: l.position,
+            video_url: l.video_url,
+            video_file_url: l.video_file_url,
           }))
         );
         if (error) throw error;
@@ -148,7 +164,7 @@ const TeacherCourses = () => {
       .select("*")
       .eq("course_id", courseId)
       .order("position", { ascending: true });
-    setLessons((data || []).map((l) => ({ id: l.id, title: l.title, content: l.content, position: l.position })));
+    setLessons((data || []).map((l: any) => ({ id: l.id, title: l.title, content: l.content, position: l.position, video_url: l.video_url || "", video_file_url: l.video_file_url || "" })));
   };
 
   const resetForm = () => {
@@ -159,7 +175,7 @@ const TeacherCourses = () => {
   };
 
   const addLesson = () => {
-    setLessons((prev) => [...prev, { title: "", content: "", position: prev.length, isNew: true }]);
+    setLessons((prev) => [...prev, { title: "", content: "", position: prev.length, isNew: true, video_url: "", video_file_url: "" }]);
   };
 
   const updateLesson = (index: number, field: keyof Lesson, value: string) => {
@@ -279,6 +295,38 @@ const TeacherCourses = () => {
                       placeholder="Lesson content (supports markdown)"
                       rows={3}
                     />
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground"><Video className="w-3.5 h-3.5" /> Video (optional)</div>
+                      <Input
+                        value={lesson.video_url}
+                        onChange={(e) => updateLesson(idx, "video_url", e.target.value)}
+                        placeholder="YouTube or Vimeo URL"
+                        className="text-sm"
+                      />
+                      <div className="flex items-center gap-2">
+                        {lesson.video_file_url && !lesson._videoFile ? (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-2 py-1 rounded flex-1">
+                            <Video className="w-3 h-3" />
+                            <span className="truncate">Uploaded video</span>
+                            <button onClick={() => { const copy = [...lessons]; copy[idx] = { ...copy[idx], video_file_url: "" }; setLessons(copy); }} className="ml-auto"><X className="w-3 h-3" /></button>
+                          </div>
+                        ) : lesson._videoFile ? (
+                          <div className="flex items-center gap-2 text-xs text-primary bg-primary/10 px-2 py-1 rounded flex-1">
+                            <Upload className="w-3 h-3" />
+                            <span className="truncate">{lesson._videoFile.name}</span>
+                            <button onClick={() => { const copy = [...lessons]; copy[idx] = { ...copy[idx], _videoFile: null }; setLessons(copy); }} className="ml-auto"><X className="w-3 h-3" /></button>
+                          </div>
+                        ) : (
+                          <label className="cursor-pointer inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                            <Upload className="w-3.5 h-3.5" /> Upload video file
+                            <input type="file" accept="video/*" className="hidden" onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) { const copy = [...lessons]; copy[idx] = { ...copy[idx], _videoFile: file }; setLessons(copy); }
+                            }} />
+                          </label>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>

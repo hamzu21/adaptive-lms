@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import StudentNotes from "@/components/StudentNotes";
+import LessonVideoPlayer from "@/components/LessonVideoPlayer";
 
 const navItems = [
   { label: "Dashboard", href: "/student", icon: <BarChart3 className="w-4 h-4" /> },
@@ -47,7 +48,7 @@ const StudentCourseDetail = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("lessons")
-        .select("id, title, content, position")
+        .select("id, title, content, position, video_url, video_file_url")
         .eq("course_id", courseId!)
         .order("position", { ascending: true });
       if (error) throw error;
@@ -178,6 +179,7 @@ const StudentCourseDetail = () => {
                         </span>
                       )}
                     </div>
+                    <LessonVideoPlayer videoUrl={selectedLesson.video_url} videoFileUrl={selectedLesson.video_file_url} />
                     <div className="prose prose-sm max-w-none text-foreground">
                       {selectedLesson.content.split("\n").map((para, i) => (
                         <p key={i}>{para}</p>
