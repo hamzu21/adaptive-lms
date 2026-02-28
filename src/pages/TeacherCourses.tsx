@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, BarChart3, Users, FileText, Plus, Trash2, GripVertical, Eye, EyeOff, ArrowLeft, Save, TrendingUp } from "lucide-react";
+import { BookOpen, BarChart3, Users, FileText, Plus, Trash2, GripVertical, Eye, EyeOff, ArrowLeft, Save, TrendingUp, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,7 @@ const navItems = [
   { label: "My Classes", href: "/teacher/classes", icon: <Users className="w-4 h-4" /> },
   { label: "Courses", href: "/teacher/courses", icon: <BookOpen className="w-4 h-4" /> },
   { label: "Assessments", href: "/teacher/assessments", icon: <FileText className="w-4 h-4" /> },
+  { label: "Assignments", href: "/teacher/assignments", icon: <ClipboardList className="w-4 h-4" /> },
   { label: "Analytics", href: "/teacher/analytics", icon: <TrendingUp className="w-4 h-4" /> },
 ];
 

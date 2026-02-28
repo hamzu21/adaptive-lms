@@ -90,6 +90,100 @@ export type Database = {
           },
         ]
       }
+      assignment_submissions: {
+        Row: {
+          assignment_id: string
+          feedback: string | null
+          file_name: string | null
+          file_url: string | null
+          graded_at: string | null
+          id: string
+          score: number | null
+          student_id: string
+          submission_text: string | null
+          submitted_at: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_id: string
+          feedback?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          graded_at?: string | null
+          id?: string
+          score?: number | null
+          student_id: string
+          submission_text?: string | null
+          submitted_at?: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          feedback?: string | null
+          file_name?: string | null
+          file_url?: string | null
+          graded_at?: string | null
+          id?: string
+          score?: number | null
+          student_id?: string
+          submission_text?: string | null
+          submitted_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assignments: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string
+          due_date: string | null
+          id: string
+          is_published: boolean
+          title: string
+          total_marks: number
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          is_published?: boolean
+          title: string
+          total_marks?: number
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          is_published?: boolean
+          title?: string
+          total_marks?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attempt_responses: {
         Row: {
           attempt_id: string
@@ -377,6 +471,41 @@ export type Database = {
           },
         ]
       }
+      student_notes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          lesson_id: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          lesson_id: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_notes_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -414,6 +543,10 @@ export type Database = {
       }
       is_assessment_teacher: {
         Args: { _assessment_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_assignment_course_teacher: {
+        Args: { _assignment_id: string; _user_id: string }
         Returns: boolean
       }
       is_course_teacher: {
