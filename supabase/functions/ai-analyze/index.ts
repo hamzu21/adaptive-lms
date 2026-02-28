@@ -44,10 +44,20 @@ serve(async (req) => {
 
     const completedLessonIds = new Set(completedLessons.map((p: any) => p.lesson_id));
 
+    // Use latest completed attempt per assessment to reflect current mastery
+    const latestAttemptsByAssessment = new Map<string, any>();
+    for (const attempt of attempts) {
+      if (!attempt.assessment_id) continue;
+      if (!latestAttemptsByAssessment.has(attempt.assessment_id)) {
+        latestAttemptsByAssessment.set(attempt.assessment_id, attempt);
+      }
+    }
+    const latestAttempts = Array.from(latestAttemptsByAssessment.values());
+
     // Build per-course performance + incomplete lessons
     const coursePerformance = enrollments.map((e: any) => {
       const course = e.courses as any;
-      const courseAttempts = attempts.filter((a: any) => a.assessments?.course_id === e.course_id);
+      const courseAttempts = latestAttempts.filter((a: any) => a.assessments?.course_id === e.course_id);
       const courseLessons = allLessons.filter((l: any) => l.course_id === e.course_id);
       const courseCompleted = courseLessons.filter((l: any) => completedLessonIds.has(l.id));
       const incompleteLessons = courseLessons.filter((l: any) => !completedLessonIds.has(l.id)).slice(0, 3);
@@ -83,9 +93,50 @@ serve(async (req) => {
     const performanceSummary = JSON.stringify({
       coursePerformance,
       totalQuizzes: attempts.length,
+      totalQuizzesConsidered: latestAttempts.length,
       totalLessonsCompleted: completedLessons.length,
       totalLessonsAvailable: allLessons.length,
     });
+
+    const allCoursesCompleted =
+      coursePerformance.length > 0 &&
+      coursePerformance.every(
+        (course: any) => course.totalLessons > 0 && course.lessonsCompleted >= course.totalLessons
+      );
+
+    const allLatestAttemptsPerfect =
+      latestAttempts.length > 0 &&
+      latestAttempts.every(
+        (attempt: any) =>
+          (attempt.total_marks ?? 0) > 0 && (attempt.score ?? 0) >= (attempt.total_marks ?? 0)
+      );
+
+    if (allCoursesCompleted && allLatestAttemptsPerfect) {
+      return new Response(
+        JSON.stringify({
+          strengths: [
+            {
+              topic: "Overall Mastery",
+              reason: "All enrolled lessons are completed and your latest quiz attempts are perfect.",
+            },
+          ],
+          weaknesses: [],
+          recommendations: [],
+          summary:
+            "Amazing work — you have completed all lessons and achieved perfect scores in your latest assessments.",
+          learningPath: [],
+          difficultyProfile: {
+            level: "advanced",
+            description: "You have mastered the current enrolled curriculum.",
+            adjustmentNote:
+              "Ask your teacher for advanced modules, project-based challenges, or higher-level courses.",
+          },
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
