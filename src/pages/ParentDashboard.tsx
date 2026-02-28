@@ -1,6 +1,6 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BarChart3, TrendingUp, BookOpen, Bell, CheckCircle2, XCircle, UserPlus, Trash2, Users } from "lucide-react";
+import { BarChart3, TrendingUp, BookOpen, Bell, CheckCircle2, XCircle, KeyRound, Trash2, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { useParentChildren, useAddChild, useRemoveChild, useChildPerformance } from "@/hooks/useParentData";
+import { useParentChildren, useAddChildByCode, useRemoveChild, useChildPerformance } from "@/hooks/useParentData";
 
 const navItems = [
   { label: "Dashboard", href: "/parent", icon: <BarChart3 className="w-4 h-4" /> },
@@ -20,9 +20,9 @@ const navItems = [
 
 const ParentDashboard = () => {
   const { data: children, isLoading: childrenLoading } = useParentChildren();
-  const addChild = useAddChild();
+  const addChild = useAddChildByCode();
   const removeChild = useRemoveChild();
-  const [childName, setChildName] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
 
   // Auto-select first child
@@ -30,11 +30,11 @@ const ParentDashboard = () => {
   const { data: performance, isLoading: perfLoading } = useChildPerformance(activeChildId);
 
   const handleAddChild = () => {
-    if (!childName.trim()) return;
-    addChild.mutate(childName, {
+    if (!inviteCode.trim()) return;
+    addChild.mutate(inviteCode, {
       onSuccess: () => {
         toast.success("Child linked successfully!");
-        setChildName("");
+        setInviteCode("");
       },
       onError: (err: any) => toast.error(err.message),
     });
@@ -48,19 +48,23 @@ const ParentDashboard = () => {
           <Users className="w-5 h-5 text-primary" /> My Children
         </h2>
 
-        <div className="flex gap-3 mb-4">
+        <div className="flex gap-3 mb-2">
           <Input
-            placeholder="Enter child's registered full name"
-            value={childName}
-            onChange={(e) => setChildName(e.target.value)}
+            placeholder="Enter 8-character invite code"
+            value={inviteCode}
+            onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
             onKeyDown={(e) => e.key === "Enter" && handleAddChild()}
-            className="max-w-sm"
+            className="max-w-sm font-mono tracking-widest uppercase"
+            maxLength={8}
           />
           <Button onClick={handleAddChild} disabled={addChild.isPending} className="gap-2">
-            <UserPlus className="w-4 h-4" />
+            <KeyRound className="w-4 h-4" />
             {addChild.isPending ? "Linking..." : "Link Child"}
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Ask your child to generate an invite code from their Student Dashboard and enter it above.
+        </p>
 
         {childrenLoading ? (
           <div className="flex gap-3">
@@ -101,7 +105,7 @@ const ParentDashboard = () => {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No children linked yet. Enter your child's registered name above to link them.</p>
+          <p className="text-sm text-muted-foreground">No children linked yet. Enter an invite code above to link your child.</p>
         )}
       </div>
 
@@ -109,7 +113,7 @@ const ParentDashboard = () => {
         <div className="text-center py-16 text-muted-foreground">
           <Users className="w-12 h-12 mx-auto mb-4 opacity-40" />
           <p className="text-lg font-medium">Link a child to see their performance</p>
-          <p className="text-sm">Use the form above to add your child by their registered name.</p>
+          <p className="text-sm">Ask your child to generate an invite code from their dashboard.</p>
         </div>
       ) : perfLoading ? (
         <div className="space-y-4">

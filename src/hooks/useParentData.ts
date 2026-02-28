@@ -30,30 +30,48 @@ export function useParentChildren() {
   });
 }
 
-export function useAddChild() {
+export function useAddChildByCode() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (childName: string) => {
-      // Find student by name using secure RPC function
-      const { data: studentId, error: rpcErr } = await supabase
-        .rpc("find_student_by_name", { _name: childName.trim() });
-      if (rpcErr) throw rpcErr;
-      if (!studentId) throw new Error("Student not found. Enter the exact registered name.");
+    mutationFn: async (code: string) => {
+      const trimmedCode = code.trim().toUpperCase();
+      if (!trimmedCode || trimmedCode.length !== 8) {
+        throw new Error("Please enter a valid 8-character invite code.");
+      }
+
+      // Look up the invite code
+      const { data: invite, error: lookupErr } = await supabase
+        .from("parent_invite_codes")
+        .select("id, student_id, expires_at, used_by")
+        .eq("code", trimmedCode)
+        .maybeSingle();
+
+      if (lookupErr) throw lookupErr;
+      if (!invite) throw new Error("Invalid invite code. Please check and try again.");
+      if (invite.used_by) throw new Error("This invite code has already been used.");
+      if (new Date(invite.expires_at) < new Date()) throw new Error("This invite code has expired. Ask your child to generate a new one.");
 
       // Check not already linked
       const { data: existing } = await supabase
         .from("parent_children")
         .select("id")
         .eq("parent_id", user!.id)
-        .eq("child_id", studentId)
+        .eq("child_id", invite.student_id)
         .maybeSingle();
       if (existing) throw new Error("This child is already linked to your account.");
 
-      const { error } = await supabase
+      // Link the child
+      const { error: linkErr } = await supabase
         .from("parent_children")
-        .insert({ parent_id: user!.id, child_id: studentId });
-      if (error) throw error;
+        .insert({ parent_id: user!.id, child_id: invite.student_id });
+      if (linkErr) throw linkErr;
+
+      // Mark code as used
+      await supabase
+        .from("parent_invite_codes")
+        .update({ used_by: user!.id, used_at: new Date().toISOString() })
+        .eq("id", invite.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["parent-children"] });
@@ -77,6 +95,39 @@ export function useRemoveChild() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["parent-children"] });
       queryClient.invalidateQueries({ queryKey: ["parent-child-performance"] });
+    },
+  });
+}
+
+// Hook for students to generate invite codes
+export function useGenerateInviteCode() {
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Not authenticated");
+
+      // Generate a random 8-character alphanumeric code
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I/O/0/1 to avoid confusion
+      let code = "";
+      for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+
+      const { data, error } = await supabase
+        .from("parent_invite_codes")
+        .insert({
+          student_id: user.id,
+          code,
+          expires_at: expiresAt.toISOString(),
+        })
+        .select("code, expires_at")
+        .single();
+
+      if (error) throw error;
+      return data;
     },
   });
 }
