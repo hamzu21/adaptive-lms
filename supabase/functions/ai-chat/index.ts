@@ -23,7 +23,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { messages } = await req.json();
+    const { messages, lessonContext } = await req.json();
     if (!messages || !Array.isArray(messages)) throw new Error("Messages array required");
 
     // Fetch student context for personalized responses
@@ -38,18 +38,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          {
-            role: "system",
-            content: `You are an AI learning assistant for a student named ${studentName}. They are enrolled in: ${courses.join(", ") || "no courses yet"}.
+    let systemContent = `You are an AI learning assistant for a student named ${studentName}. They are enrolled in: ${courses.join(", ") || "no courses yet"}.
 
 Your role:
 - Help them understand course material and concepts
@@ -60,8 +49,22 @@ Your role:
 - Keep responses focused and educational
 - If asked about non-academic topics, gently redirect to learning
 
-Format responses with markdown for readability. Use bullet points, headers, and bold text where helpful.`,
-          },
+Format responses with markdown for readability. Use bullet points, headers, and bold text where helpful.`;
+
+    if (lessonContext && lessonContext.title && lessonContext.content) {
+      systemContent += `\n\nThe student is currently viewing the lesson "${lessonContext.title}"${lessonContext.course ? ` from the course "${lessonContext.course}"` : ""}. Here is the lesson content:\n\n---\n${lessonContext.content}\n---\n\nUse this lesson content as primary context when answering their questions. Reference specific parts of the lesson when relevant.`;
+    }
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: systemContent },
           ...messages,
         ],
         stream: true,

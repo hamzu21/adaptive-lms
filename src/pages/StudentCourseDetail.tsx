@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,6 +27,7 @@ const StudentCourseDetail = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
 
   const { data: course, isLoading: courseLoading } = useQuery({
@@ -185,6 +186,23 @@ const StudentCourseDetail = () => {
                       {selectedLesson.content.split("\n").map((para, i) => (
                         <p key={i}>{para}</p>
                       ))}
+                    </div>
+                    <div className="mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const params = new URLSearchParams({
+                            lessonTitle: selectedLesson.title,
+                            lessonContent: selectedLesson.content,
+                            courseName: course?.title || "",
+                          });
+                          navigate(`/student/ai-chat?${params.toString()}`);
+                        }}
+                      >
+                        <Bot className="w-4 h-4 mr-1" />
+                        Ask AI about this lesson
+                      </Button>
                     </div>
                     <StudentNotes lessonId={selectedLesson.id} />
                   </motion.div>

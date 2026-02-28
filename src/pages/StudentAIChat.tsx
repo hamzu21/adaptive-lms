@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { BookOpen, BarChart3, FileText, TrendingUp, ClipboardList, Send, Bot, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,15 @@ type Msg = { role: "user" | "assistant"; content: string };
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
 const StudentAIChat = () => {
+  const [searchParams] = useSearchParams();
+  const lessonContext = useMemo(() => {
+    const title = searchParams.get("lessonTitle");
+    const content = searchParams.get("lessonContent");
+    const course = searchParams.get("courseName");
+    if (title && content) return { title, content, course: course || "" };
+    return null;
+  }, [searchParams]);
+
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -53,7 +63,7 @@ const StudentAIChat = () => {
           Authorization: `Bearer ${session?.access_token}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
-        body: JSON.stringify({ messages: [...messages, userMsg] }),
+        body: JSON.stringify({ messages: [...messages, userMsg], lessonContext }),
       });
 
       if (resp.status === 429) {
@@ -144,7 +154,7 @@ const StudentAIChat = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, messages]);
+  }, [input, isLoading, messages, lessonContext]);
 
   return (
     <DashboardLayout title="AI Study Assistant" navItems={navItems}>
@@ -157,20 +167,42 @@ const StudentAIChat = () => {
                 <Bot className="w-8 h-8 text-primary" />
               </div>
               <h2 className="text-lg font-semibold mb-2">AI Study Assistant</h2>
-              <p className="text-sm text-muted-foreground max-w-md">
-                Ask me anything about your courses! I can help explain concepts, provide study tips, and answer academic questions.
-              </p>
-              <div className="flex flex-wrap gap-2 mt-6 justify-center">
-                {["Explain recursion simply", "Study tips for exams", "Help me understand arrays"].map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    onClick={() => { setInput(suggestion); }}
-                    className="text-xs px-3 py-1.5 rounded-full border border-border bg-background hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
+              {lessonContext ? (
+                <>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Ask me anything about <span className="font-medium text-foreground">"{lessonContext.title}"</span>
+                    {lessonContext.course && <> from <span className="font-medium text-foreground">{lessonContext.course}</span></>}.
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-6 justify-center">
+                    {[`Summarize "${lessonContext.title}"`, `What are the key concepts?`, `Give me practice questions`].map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => { setInput(suggestion); }}
+                        className="text-xs px-3 py-1.5 rounded-full border border-border bg-background hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Ask me anything about your courses! I can help explain concepts, provide study tips, and answer academic questions.
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-6 justify-center">
+                    {["Explain recursion simply", "Study tips for exams", "Help me understand arrays"].map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => { setInput(suggestion); }}
+                        className="text-xs px-3 py-1.5 rounded-full border border-border bg-background hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
           <AnimatePresence>
