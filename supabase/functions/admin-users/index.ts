@@ -1,11 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
+import { z } from "https://esm.sh/zod@3.25.76";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const UpdateRoleSchema = z.object({
+  userId: z.string().uuid(),
+  newRole: z.enum(["student", "teacher", "parent", "admin"]),
+});
+
+const DeleteUserSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+const UpdateProfileSchema = z.object({
+  userId: z.string().uuid(),
+  fullName: z.string().trim().min(1).max(200),
+});
+
+const ListParamsSchema = z.object({
+  page: z.coerce.number().int().min(1).max(1000).default(1),
+  search: z.string().max(200).default(""),
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -37,13 +57,14 @@ serve(async (req) => {
     const action = url.searchParams.get("action");
 
     if (req.method === "GET" && action === "list") {
-      // List all users with profiles and roles
-      const page = parseInt(url.searchParams.get("page") || "1");
+      const params = ListParamsSchema.parse({
+        page: url.searchParams.get("page") || "1",
+        search: url.searchParams.get("search") || "",
+      });
       const perPage = 50;
-      const search = url.searchParams.get("search") || "";
 
       const { data: authUsers, error: listError } = await adminClient.auth.admin.listUsers({
-        page,
+        page: params.page,
         perPage,
       });
       if (listError) throw listError;
@@ -68,8 +89,8 @@ serve(async (req) => {
         lastSignIn: u.last_sign_in_at,
       }));
 
-      if (search) {
-        const s = search.toLowerCase();
+      if (params.search) {
+        const s = params.search.toLowerCase();
         users = users.filter((u: any) =>
           u.email?.toLowerCase().includes(s) || u.fullName?.toLowerCase().includes(s)
         );
@@ -81,9 +102,7 @@ serve(async (req) => {
     }
 
     if (req.method === "POST" && action === "update-role") {
-      const { userId, newRole } = await req.json();
-      if (!userId || !newRole) throw new Error("Missing userId or newRole");
-      if (!["student", "teacher", "parent", "admin"].includes(newRole)) throw new Error("Invalid role");
+      const { userId, newRole } = UpdateRoleSchema.parse(await req.json());
 
       // Don't allow changing own role
       if (userId === user.id) throw new Error("Cannot change your own role");
@@ -97,8 +116,7 @@ serve(async (req) => {
     }
 
     if (req.method === "POST" && action === "delete-user") {
-      const { userId } = await req.json();
-      if (!userId) throw new Error("Missing userId");
+      const { userId } = DeleteUserSchema.parse(await req.json());
       if (userId === user.id) throw new Error("Cannot delete yourself");
 
       const { error } = await adminClient.auth.admin.deleteUser(userId);
@@ -110,8 +128,7 @@ serve(async (req) => {
     }
 
     if (req.method === "POST" && action === "update-profile") {
-      const { userId, fullName } = await req.json();
-      if (!userId) throw new Error("Missing userId");
+      const { userId, fullName } = UpdateProfileSchema.parse(await req.json());
 
       const { error } = await adminClient.from("profiles").update({ full_name: fullName }).eq("user_id", userId);
       if (error) throw error;
@@ -123,6 +140,12 @@ serve(async (req) => {
 
     throw new Error("Unknown action");
   } catch (e) {
+    if (e instanceof z.ZodError) {
+      return new Response(JSON.stringify({ error: "Invalid input", details: e.errors }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     console.error("admin-users error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: e instanceof Error && e.message.includes("Forbidden") ? 403 : 500,
