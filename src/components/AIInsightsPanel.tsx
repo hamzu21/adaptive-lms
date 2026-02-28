@@ -6,11 +6,29 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Lightbulb, Star } from "lucide-react";
 import { motion } from "framer-motion";
 
-interface Analysis {
+export interface LearningPathItem {
+  courseId: string;
+  courseName: string;
+  lessonId: string;
+  lessonTitle: string;
+  reason: string;
+  difficulty: "review" | "standard" | "challenge";
+  urgency: "high" | "medium" | "low";
+}
+
+export interface DifficultyProfile {
+  level: "beginner" | "intermediate" | "advanced";
+  description: string;
+  adjustmentNote: string;
+}
+
+export interface Analysis {
   strengths: { topic: string; reason: string }[];
   weaknesses: { topic: string; reason: string }[];
   recommendations: { title: string; description: string; priority: string }[];
   summary: string;
+  learningPath?: LearningPathItem[];
+  difficultyProfile?: DifficultyProfile;
 }
 
 export function useAIAnalysis() {

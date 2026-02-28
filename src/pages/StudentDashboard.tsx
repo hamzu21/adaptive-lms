@@ -1,10 +1,11 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, BarChart3, Brain, Award, TrendingUp, Clock, Target, FileText, ClipboardList, Bot } from "lucide-react";
+import { BookOpen, BarChart3, Brain, Award, TrendingUp, Clock, Target, FileText, ClipboardList, Bot, Route } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { useStudentCourses, useStudentStats } from "@/hooks/useCourses";
 import { Skeleton } from "@/components/ui/skeleton";
 import AIInsightsPanel from "@/components/AIInsightsPanel";
+import AdaptiveLearningPath from "@/components/AdaptiveLearningPath";
 
 const navItems = [
   { label: "Dashboard", href: "/student", icon: <BarChart3 className="w-4 h-4" /> },
@@ -49,7 +50,7 @@ const StudentDashboard = () => {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2 bg-card rounded-xl border border-border p-6">
           <h2 className="text-lg font-semibold mb-4">My Courses</h2>
           {coursesLoading ? (
@@ -81,6 +82,14 @@ const StudentDashboard = () => {
           </h2>
           <AIInsightsPanel />
         </div>
+      </div>
+
+      {/* Adaptive Learning Path */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Route className="w-5 h-5 text-primary" /> Adaptive Learning Path
+        </h2>
+        <AdaptiveLearningPath />
       </div>
     </DashboardLayout>
   );
