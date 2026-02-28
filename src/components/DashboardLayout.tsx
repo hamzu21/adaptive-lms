@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BookOpen, LogOut, Menu } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { AnimatePresence, motion } from "framer-motion";
@@ -161,6 +162,7 @@ const DashboardLayout = ({ children, title, navItems }: DashboardLayoutProps) =>
             </Sheet>
             <h1 className="text-lg font-bold">{title}</h1>
           </div>
+          <NotificationBell />
         </header>
         <main
           className="flex-1 overflow-y-auto pb-20 lg:pb-6"
