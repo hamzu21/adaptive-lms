@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import StudentNotes from "@/components/StudentNotes";
 import LessonVideoPlayer from "@/components/LessonVideoPlayer";
+import FeedbackRating from "@/components/FeedbackRating";
 
 const navItems = [
   { label: "Dashboard", href: "/student", icon: <BarChart3 className="w-4 h-4" /> },
@@ -205,6 +206,11 @@ const StudentCourseDetail = () => {
                       </Button>
                     </div>
                     <StudentNotes lessonId={selectedLesson.id} />
+                    <FeedbackRating
+                      courseId={courseId!}
+                      lessonId={selectedLesson.id}
+                      label="Rate this lesson"
+                    />
                   </motion.div>
                 ) : (
                   <motion.div
@@ -219,6 +225,11 @@ const StudentCourseDetail = () => {
                 )}
               </AnimatePresence>
             </div>
+          </div>
+
+          {/* Course-level feedback */}
+          <div className="mt-6 bg-card rounded-xl border border-border p-4">
+            <FeedbackRating courseId={courseId!} label="Rate this course" />
           </div>
         </>
       )}
