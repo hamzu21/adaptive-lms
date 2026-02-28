@@ -149,8 +149,8 @@ const DashboardLayout = ({ children, title, navItems }: DashboardLayoutProps) =>
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-64">
-        <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 sm:px-6">
+      <div className="flex-1 flex flex-col h-screen lg:ml-64">
+        <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 sm:px-6 shrink-0">
           <div className="flex items-center gap-3">
             {/* Mobile hamburger */}
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
