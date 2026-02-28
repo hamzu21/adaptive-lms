@@ -1,9 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.25.76";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const AnswerSchema = z.object({
+  questionId: z.string().uuid(),
+  selectedOption: z.number().int().min(0).max(9),
+});
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -27,10 +33,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await anonClient.auth.getUser();
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { questionId, selectedOption } = await req.json();
-    if (!questionId || selectedOption === null || selectedOption === undefined) {
-      throw new Error("Missing questionId or selectedOption");
-    }
+    const { questionId, selectedOption } = AnswerSchema.parse(await req.json());
 
     // Use service role to read correct_option (bypasses RLS)
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
@@ -49,6 +52,12 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return new Response(
+        JSON.stringify({ error: "Invalid input", details: error.errors }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

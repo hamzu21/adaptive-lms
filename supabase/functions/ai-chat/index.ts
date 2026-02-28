@@ -1,11 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
+import { z } from "https://esm.sh/zod@3.25.76";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const MessageSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string().min(1).max(10000),
+  })).min(1).max(50),
+  lessonContext: z.object({
+    title: z.string().max(200).optional(),
+    content: z.string().max(50000).optional(),
+    course: z.string().max(200).optional(),
+  }).optional().nullable(),
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -25,8 +38,8 @@ serve(async (req) => {
     if (claimsError || !claimsData?.claims) throw new Error("Unauthorized");
     const userId = claimsData.claims.sub as string;
 
-    const { messages, lessonContext } = await req.json();
-    if (!messages || !Array.isArray(messages)) throw new Error("Messages array required");
+    const body = MessageSchema.parse(await req.json());
+    const { messages, lessonContext } = body;
 
     // Fetch student context for personalized responses
     const [enrollRes, profileRes] = await Promise.all([
@@ -89,6 +102,12 @@ Format responses with markdown for readability. Use bullet points, headers, and 
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
+    if (e instanceof z.ZodError) {
+      return new Response(JSON.stringify({ error: "Invalid input", details: e.errors }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     console.error("ai-chat error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 500,
