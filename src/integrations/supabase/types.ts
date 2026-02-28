@@ -542,6 +542,54 @@ export type Database = {
           },
         ]
       }
+      student_feedback: {
+        Row: {
+          comment: string
+          course_id: string
+          created_at: string
+          id: string
+          lesson_id: string | null
+          rating: number
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          comment?: string
+          course_id: string
+          created_at?: string
+          id?: string
+          lesson_id?: string | null
+          rating: number
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          comment?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          lesson_id?: string | null
+          rating?: number
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_feedback_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_feedback_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_notes: {
         Row: {
           content: string
