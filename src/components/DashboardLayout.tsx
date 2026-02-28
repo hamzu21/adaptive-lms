@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BookOpen, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,31 @@ const DashboardLayout = ({ children, title, navItems }: DashboardLayoutProps) =>
   const { profile, role, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Swipe gesture state
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStart.current) return;
+    const dx = e.changedTouches[0].clientX - touchStart.current.x;
+    const dy = e.changedTouches[0].clientY - touchStart.current.y;
+    touchStart.current = null;
+
+    // Only trigger if horizontal swipe > 80px and more horizontal than vertical
+    if (Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx)) return;
+
+    const currentIndex = navItems.findIndex((item) => item.href === location.pathname);
+    if (currentIndex === -1) return;
+
+    const nextIndex = dx < 0 ? currentIndex + 1 : currentIndex - 1;
+    if (nextIndex >= 0 && nextIndex < navItems.length) {
+      navigate(navItems[nextIndex].href);
+    }
+  }, [navItems, location.pathname, navigate]);
+
   const handleSignOut = async () => {
     setMobileOpen(false);
     await signOut();
@@ -119,7 +144,11 @@ const DashboardLayout = ({ children, title, navItems }: DashboardLayoutProps) =>
             <h1 className="text-lg font-bold">{title}</h1>
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto pb-20 lg:pb-6">
+        <main
+          className="flex-1 p-4 sm:p-6 overflow-y-auto pb-20 lg:pb-6"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           {children}
         </main>
 
