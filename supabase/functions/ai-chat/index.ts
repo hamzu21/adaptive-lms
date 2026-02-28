@@ -12,7 +12,7 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("Missing authorization");
+    if (!authHeader?.startsWith("Bearer ")) throw new Error("Missing authorization");
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -20,16 +20,18 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) throw new Error("Unauthorized");
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) throw new Error("Unauthorized");
+    const userId = claimsData.claims.sub as string;
 
     const { messages, lessonContext } = await req.json();
     if (!messages || !Array.isArray(messages)) throw new Error("Messages array required");
 
     // Fetch student context for personalized responses
     const [enrollRes, profileRes] = await Promise.all([
-      supabase.from("enrollments").select("courses(title, subject)").eq("student_id", user.id),
-      supabase.from("profiles").select("full_name").eq("user_id", user.id).single(),
+      supabase.from("enrollments").select("courses(title, subject)").eq("student_id", userId),
+      supabase.from("profiles").select("full_name").eq("user_id", userId).single(),
     ]);
 
     const courses = (enrollRes.data || []).map((e: any) => e.courses?.title).filter(Boolean);
