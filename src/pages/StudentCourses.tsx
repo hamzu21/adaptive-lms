@@ -1,5 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, BarChart3, FileText, TrendingUp, ChevronRight } from "lucide-react";
+import { BookOpen, BarChart3, FileText, TrendingUp, ChevronRight, ClipboardList } from "lucide-react";
 import { useStudentCourses } from "@/hooks/useCourses";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
@@ -10,6 +10,7 @@ const navItems = [
   { label: "Dashboard", href: "/student", icon: <BarChart3 className="w-4 h-4" /> },
   { label: "My Courses", href: "/student/courses", icon: <BookOpen className="w-4 h-4" /> },
   { label: "Assessments", href: "/student/assessments", icon: <FileText className="w-4 h-4" /> },
+  { label: "Assignments", href: "/student/assignments", icon: <ClipboardList className="w-4 h-4" /> },
   { label: "Progress", href: "/student/progress", icon: <TrendingUp className="w-4 h-4" /> },
 ];
 
