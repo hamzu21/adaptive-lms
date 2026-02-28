@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,48 +7,76 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { formatDistanceToNow } from "date-fns";
 
 interface Notification {
   id: string;
   title: string;
   message: string;
-  time: string;
   read: boolean;
+  created_at: string;
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    title: "New Enrollment",
-    message: "A student enrolled in your course.",
-    time: "5 min ago",
-    read: false,
-  },
-  {
-    id: "2",
-    title: "Assessment Submitted",
-    message: "A student completed an assessment.",
-    time: "1 hour ago",
-    read: false,
-  },
-  {
-    id: "3",
-    title: "Course Published",
-    message: "Your course is now live.",
-    time: "Yesterday",
-    read: true,
-  },
-];
-
 const NotificationBell = () => {
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchNotifications = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("notifications")
+      .select("id, title, message, read, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (data) setNotifications(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+
+    if (!user) return;
+
+    const channel = supabase
+      .channel("notifications-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newNotif = payload.new as Notification;
+          setNotifications((prev) => [newNotif, ...prev].slice(0, 20));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const markAllRead = () => {
+  const markAllRead = async () => {
+    if (!user) return;
+    await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("user_id", user.id)
+      .eq("read", false);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
-  const markRead = (id: string) => {
+  const markRead = async (id: string) => {
+    await supabase.from("notifications").update({ read: true }).eq("id", id);
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
@@ -78,15 +106,17 @@ const NotificationBell = () => {
           )}
         </div>
         <div className="max-h-72 overflow-y-auto">
-          {notifications.length === 0 ? (
+          {loading ? (
+            <p className="p-4 text-sm text-muted-foreground text-center">Loading…</p>
+          ) : notifications.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground text-center">
-              No notifications
+              No notifications yet
             </p>
           ) : (
             notifications.map((n) => (
               <button
                 key={n.id}
-                onClick={() => markRead(n.id)}
+                onClick={() => !n.read && markRead(n.id)}
                 className={cn(
                   "w-full text-left px-4 py-3 border-b border-border last:border-0 transition-colors hover:bg-muted/50",
                   !n.read && "bg-primary/5"
@@ -99,7 +129,9 @@ const NotificationBell = () => {
                   <div className={cn(!n.read ? "" : "ml-3.5")}>
                     <p className="text-sm font-medium">{n.title}</p>
                     <p className="text-xs text-muted-foreground">{n.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{n.time}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                    </p>
                   </div>
                 </div>
               </button>
