@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, BarChart3, Users, FileText, AlertTriangle, TrendingUp, CheckCircle2, Plus, XCircle, ClipboardList } from "lucide-react";
+import { BookOpen, BarChart3, Users, FileText, AlertTriangle, TrendingUp, CheckCircle2, Plus, XCircle, ClipboardList, Star, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTeacherStats } from "@/hooks/useCourses";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -102,6 +102,46 @@ const TeacherDashboard = () => {
       });
 
       return { students: studentScores, atRiskStudents: atRiskStudents.slice(0, 5), courseOverview };
+    },
+  });
+
+  // Fetch aggregated student feedback for teacher's courses
+  const { data: feedbackData, isLoading: feedbackLoading } = useQuery({
+    queryKey: ["teacher-feedback-summary", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data: courses } = await supabase
+        .from("courses")
+        .select("id, title")
+        .eq("teacher_id", user!.id);
+      const courseIds = (courses || []).map((c) => c.id);
+      if (courseIds.length === 0) return [];
+
+      const { data: feedback } = await supabase
+        .from("student_feedback")
+        .select("course_id, rating, comment, created_at")
+        .in("course_id", courseIds)
+        .order("created_at", { ascending: false });
+
+      const courseMap = Object.fromEntries((courses || []).map((c) => [c.id, c.title]));
+
+      // Aggregate per course
+      const byCourse: Record<string, { ratings: number[]; comments: { rating: number; comment: string; date: string }[] }> = {};
+      (feedback || []).forEach((f) => {
+        if (!byCourse[f.course_id]) byCourse[f.course_id] = { ratings: [], comments: [] };
+        byCourse[f.course_id].ratings.push(f.rating);
+        if (f.comment?.trim()) {
+          byCourse[f.course_id].comments.push({ rating: f.rating, comment: f.comment, date: f.created_at });
+        }
+      });
+
+      return Object.entries(byCourse).map(([courseId, data]) => ({
+        courseId,
+        courseName: courseMap[courseId] || "Unknown",
+        avgRating: +(data.ratings.reduce((s, v) => s + v, 0) / data.ratings.length).toFixed(1),
+        totalRatings: data.ratings.length,
+        recentComments: data.comments.slice(0, 3),
+      })).sort((a, b) => b.totalRatings - a.totalRatings);
     },
   });
 
@@ -215,6 +255,59 @@ const TeacherDashboard = () => {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Student Feedback & Ratings */}
+      <div className="mt-6 bg-card rounded-xl border border-border p-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Star className="w-5 h-5 text-yellow-500" /> Student Feedback & Ratings
+        </h2>
+        {feedbackLoading ? (
+          <div className="space-y-3">{[1, 2].map((i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
+        ) : feedbackData && feedbackData.length > 0 ? (
+          <div className="space-y-4">
+            {feedbackData.map((course, i) => (
+              <motion.div
+                key={course.courseId}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="p-4 rounded-lg bg-secondary/30 border border-border"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-medium">{course.courseName}</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={cn(
+                            "w-4 h-4",
+                            star <= Math.round(course.avgRating) ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground/30"
+                          )}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-sm font-semibold">{course.avgRating}</span>
+                    <Badge variant="secondary" className="text-xs">{course.totalRatings} rating{course.totalRatings !== 1 ? "s" : ""}</Badge>
+                  </div>
+                </div>
+                {course.recentComments.length > 0 && (
+                  <div className="space-y-1.5 mt-2">
+                    {course.recentComments.map((c, j) => (
+                      <div key={j} className="flex items-start gap-2 text-sm">
+                        <MessageSquare className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                        <p className="text-muted-foreground italic">"{c.comment}"</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No student feedback yet. Ratings will appear here once students rate your courses.</p>
+        )}
       </div>
     </DashboardLayout>
   );
