@@ -24,6 +24,7 @@ import TeacherAssignmentsPage from "./pages/TeacherAssignments";
 import TeacherAnalytics from "./pages/TeacherAnalytics";
 import TeacherProfile from "./pages/TeacherProfile";
 import ParentDashboard from "./pages/ParentDashboard";
+import ParentProfile from "./pages/ParentProfile";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -58,6 +59,7 @@ const App = () => (
             <Route path="/teacher/profile" element={<ProtectedRoute allowedRoles={["teacher"]}><TeacherProfile /></ProtectedRoute>} />
             <Route path="/teacher/*" element={<ProtectedRoute allowedRoles={["teacher"]}><TeacherDashboard /></ProtectedRoute>} />
             <Route path="/parent" element={<ProtectedRoute allowedRoles={["parent"]}><ParentDashboard /></ProtectedRoute>} />
+            <Route path="/parent/profile" element={<ProtectedRoute allowedRoles={["parent"]}><ParentProfile /></ProtectedRoute>} />
             <Route path="/parent/*" element={<ProtectedRoute allowedRoles={["parent"]}><ParentDashboard /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/*" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
