@@ -1,1 +1,7 @@
 project_id = "jvvmskukiriglrateaki"
+
+[functions.ai-analyze]
+verify_jwt = false
+
+[functions.ai-chat]
+verify_jwt = false

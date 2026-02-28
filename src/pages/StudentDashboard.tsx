@@ -1,9 +1,10 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, BarChart3, Brain, Award, TrendingUp, Clock, Target, FileText, ClipboardList } from "lucide-react";
+import { BookOpen, BarChart3, Brain, Award, TrendingUp, Clock, Target, FileText, ClipboardList, Bot } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { useStudentCourses, useStudentStats } from "@/hooks/useCourses";
 import { Skeleton } from "@/components/ui/skeleton";
+import AIInsightsPanel from "@/components/AIInsightsPanel";
 
 const navItems = [
   { label: "Dashboard", href: "/student", icon: <BarChart3 className="w-4 h-4" /> },
@@ -11,6 +12,7 @@ const navItems = [
   { label: "Assessments", href: "/student/assessments", icon: <FileText className="w-4 h-4" /> },
   { label: "Assignments", href: "/student/assignments", icon: <ClipboardList className="w-4 h-4" /> },
   { label: "Progress", href: "/student/progress", icon: <TrendingUp className="w-4 h-4" /> },
+  { label: "AI Assistant", href: "/student/ai-chat", icon: <Bot className="w-4 h-4" /> },
 ];
 
 const StudentDashboard = () => {
@@ -73,11 +75,11 @@ const StudentDashboard = () => {
           )}
         </div>
 
-        <div className="bg-card rounded-xl border border-border p-6">
+        <div>
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Target className="w-5 h-5 text-primary" /> AI Recommendations
+            <Target className="w-5 h-5 text-primary" /> AI Insights
           </h2>
-          <p className="text-sm text-muted-foreground">Recommendations will appear once you have course progress data.</p>
+          <AIInsightsPanel />
         </div>
       </div>
     </DashboardLayout>
