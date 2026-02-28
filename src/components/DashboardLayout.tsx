@@ -119,9 +119,33 @@ const DashboardLayout = ({ children, title, navItems }: DashboardLayoutProps) =>
             <h1 className="text-lg font-bold">{title}</h1>
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto pb-20 lg:pb-6">
           {children}
         </main>
+
+        {/* Mobile Bottom Tab Bar */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex items-center justify-around h-16 safe-area-pb">
+          {navItems.slice(0, 5).map((item) => (
+            <Link
+              key={item.href}
+              to={item.href}
+              className={cn(
+                "flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-[10px] font-medium transition-colors",
+                location.pathname === item.href
+                  ? "text-primary"
+                  : "text-muted-foreground"
+              )}
+            >
+              <span className={cn(
+                "flex items-center justify-center w-8 h-8 rounded-full transition-colors",
+                location.pathname === item.href && "bg-primary/10"
+              )}>
+                {item.icon}
+              </span>
+              {item.label}
+            </Link>
+          ))}
+        </nav>
       </div>
     </div>
   );
