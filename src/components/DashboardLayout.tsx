@@ -45,7 +45,7 @@ const SidebarContent = ({
       </Link>
     </div>
 
-    <nav className="flex-1 p-4 space-y-1">
+    <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
       {navItems.map((item) => (
         <Link
           key={item.href}
@@ -144,12 +144,12 @@ const DashboardLayout = ({ children, title, navItems }: DashboardLayoutProps) =>
   return (
     <div className="min-h-screen flex bg-muted/30">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border">
+      <aside className="hidden lg:flex flex-col w-64 fixed top-0 left-0 h-screen bg-card border-r border-border z-40">
         <SidebarContent {...sharedProps} />
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-64">
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
             {/* Mobile hamburger */}
