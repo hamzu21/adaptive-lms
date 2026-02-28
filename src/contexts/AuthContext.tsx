@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
-  profile: { full_name: string; avatar_url: string | null } | null;
+  profile: { full_name: string; avatar_url: string | null; expertise?: string } | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -28,13 +28,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [profile, setProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string; avatar_url: string | null; expertise?: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (userId: string) => {
     try {
       const [profileRes, roleRes] = await Promise.all([
-        supabase.from("profiles").select("full_name, avatar_url").eq("user_id", userId).single(),
+        supabase.from("profiles").select("full_name, avatar_url, expertise").eq("user_id", userId).single(),
         supabase.from("user_roles").select("role").eq("user_id", userId).single(),
       ]);
 
