@@ -65,7 +65,11 @@ const SidebarContent = ({
     </nav>
 
     <div className="p-4 border-t border-border">
-      <div className="flex items-center gap-3 mb-3">
+      <Link
+        to={`/${role}/profile`}
+        onClick={onNavClick}
+        className="flex items-center gap-3 mb-3 rounded-lg px-1 py-1.5 -mx-1 hover:bg-secondary transition-colors cursor-pointer"
+      >
         <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
           {profile?.full_name?.charAt(0) || "U"}
         </div>
@@ -73,7 +77,7 @@ const SidebarContent = ({
           <p className="text-sm font-medium">{profile?.full_name || "User"}</p>
           <p className="text-xs text-muted-foreground capitalize">{role || "user"}</p>
         </div>
-      </div>
+      </Link>
       <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={onSignOut}>
         <LogOut className="w-4 h-4 mr-2" /> Sign Out
       </Button>
