@@ -18,7 +18,6 @@ interface Question {
   id: string;
   question_text: string;
   options: string[];
-  correct_option: number;
   marks: number;
   position: number;
   difficulty: Difficulty;
@@ -41,17 +40,12 @@ const DIFFICULTY_CONFIG = {
 
 function getNextDifficulty(state: AdaptiveState): Difficulty {
   const currentIdx = DIFFICULTY_ORDER.indexOf(state.currentDifficulty);
-
-  // Move up after 2 correct in a row
   if (state.correctStreak >= 2 && currentIdx < DIFFICULTY_ORDER.length - 1) {
     return DIFFICULTY_ORDER[currentIdx + 1];
   }
-
-  // Move down after 2 incorrect in a row
   if (state.incorrectStreak >= 2 && currentIdx > 0) {
     return DIFFICULTY_ORDER[currentIdx - 1];
   }
-
   return state.currentDifficulty;
 }
 
@@ -60,11 +54,8 @@ function pickNextQuestion(
   answeredIds: Set<string>,
   targetDifficulty: Difficulty
 ): Question | null {
-  // Try to find a question at target difficulty
   const atTarget = allQuestions.filter((q) => q.difficulty === targetDifficulty && !answeredIds.has(q.id));
   if (atTarget.length > 0) return atTarget[Math.floor(Math.random() * atTarget.length)];
-
-  // Fallback: find closest difficulty
   const currentIdx = DIFFICULTY_ORDER.indexOf(targetDifficulty);
   for (let offset = 1; offset < DIFFICULTY_ORDER.length; offset++) {
     for (const dir of [1, -1]) {
@@ -77,8 +68,27 @@ function pickNextQuestion(
       }
     }
   }
-
   return null;
+}
+
+async function validateAnswer(questionId: string, selectedOption: number): Promise<{ isCorrect: boolean; marks: number }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validate-answer`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ questionId, selectedOption }),
+    }
+  );
+
+  if (!response.ok) throw new Error("Validation failed");
+  return response.json();
 }
 
 interface AdaptiveQuizEngineProps {
@@ -91,6 +101,9 @@ interface AdaptiveQuizEngineProps {
 export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onComplete }: AdaptiveQuizEngineProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(null);
+  const [correctOptionIdx, setCorrectOptionIdx] = useState<number | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
   const [adaptiveState, setAdaptiveState] = useState<AdaptiveState>({
     currentDifficulty: "medium",
     questionsAnswered: 0,
@@ -113,7 +126,7 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
     queryFn: async () => {
       const { data, error } = await supabase
         .from("questions")
-        .select("id, question_text, options, correct_option, marks, position, difficulty")
+        .select("id, question_text, options, marks, position, difficulty")
         .eq("assessment_id", assessmentId)
         .order("position", { ascending: true });
       if (error) throw error;
@@ -129,19 +142,15 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
   const currentQuestion = useMemo(() => {
     if (!allQuestions || allQuestions.length === 0) return null;
     if (answeredIds.size >= allQuestions.length) return null;
-
-    // First question or next question
     if (adaptiveState.questionsAnswered === 0 && adaptiveState.servedQuestions.length === 0) {
       return pickNextQuestion(allQuestions, answeredIds, "medium");
     }
-
     return pickNextQuestion(allQuestions, answeredIds, adaptiveState.currentDifficulty);
   }, [allQuestions, answeredIds, adaptiveState]);
 
   const totalQuestions = allQuestions?.length ?? 0;
   const isQuizComplete = answeredIds.size >= totalQuestions;
 
-  // Difficulty distribution stats
   const difficultyStats = useMemo(() => {
     const stats = { easy: 0, medium: 0, hard: 0 };
     adaptiveState.servedQuestions.forEach((q) => {
@@ -150,53 +159,62 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
     return stats;
   }, [adaptiveState.servedQuestions]);
 
-  const handleAnswer = useCallback(() => {
-    if (selectedAnswer === null || !currentQuestion) return;
+  const handleAnswer = useCallback(async () => {
+    if (selectedAnswer === null || !currentQuestion || isValidating) return;
 
-    const isCorrect = selectedAnswer === currentQuestion.correct_option;
-    setShowFeedback(true);
+    setIsValidating(true);
+    try {
+      const result = await validateAnswer(currentQuestion.id, selectedAnswer);
+      const isCorrect = result.isCorrect;
+      setLastAnswerCorrect(isCorrect);
+      // We don't reveal the correct option index to the client when wrong
+      setCorrectOptionIdx(isCorrect ? selectedAnswer : null);
+      setShowFeedback(true);
 
-    // Auto-advance after feedback
-    setTimeout(() => {
-      setAdaptiveState((prev) => {
-        const newServed = [
-          ...prev.servedQuestions,
-          { questionId: currentQuestion.id, difficulty: currentQuestion.difficulty, wasCorrect: isCorrect },
-        ];
+      setTimeout(() => {
+        setAdaptiveState((prev) => {
+          const newServed = [
+            ...prev.servedQuestions,
+            { questionId: currentQuestion.id, difficulty: currentQuestion.difficulty, wasCorrect: isCorrect },
+          ];
 
-        const newCorrectStreak = isCorrect ? prev.correctStreak + 1 : 0;
-        const newIncorrectStreak = isCorrect ? 0 : prev.incorrectStreak + 1;
+          const newCorrectStreak = isCorrect ? prev.correctStreak + 1 : 0;
+          const newIncorrectStreak = isCorrect ? 0 : prev.incorrectStreak + 1;
 
-        const newState: AdaptiveState = {
-          currentDifficulty: prev.currentDifficulty,
-          questionsAnswered: prev.questionsAnswered + 1,
-          correctStreak: newCorrectStreak,
-          incorrectStreak: newIncorrectStreak,
-          servedQuestions: newServed,
-        };
+          const newState: AdaptiveState = {
+            currentDifficulty: prev.currentDifficulty,
+            questionsAnswered: prev.questionsAnswered + 1,
+            correctStreak: newCorrectStreak,
+            incorrectStreak: newIncorrectStreak,
+            servedQuestions: newServed,
+          };
 
-        // Calculate next difficulty
-        newState.currentDifficulty = getNextDifficulty(newState);
+          newState.currentDifficulty = getNextDifficulty(newState);
 
-        // Reset streaks after difficulty change
-        if (newState.currentDifficulty !== prev.currentDifficulty) {
-          newState.correctStreak = 0;
-          newState.incorrectStreak = 0;
-        }
+          if (newState.currentDifficulty !== prev.currentDifficulty) {
+            newState.correctStreak = 0;
+            newState.incorrectStreak = 0;
+          }
 
-        return newState;
-      });
+          return newState;
+        });
 
-      setSelectedAnswer(null);
-      setShowFeedback(false);
-    }, 1500);
-  }, [selectedAnswer, currentQuestion]);
+        setSelectedAnswer(null);
+        setShowFeedback(false);
+        setLastAnswerCorrect(null);
+        setCorrectOptionIdx(null);
+        setIsValidating(false);
+      }, 1500);
+    } catch {
+      toast.error("Failed to validate answer");
+      setIsValidating(false);
+    }
+  }, [selectedAnswer, currentQuestion, isValidating]);
 
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (!allQuestions || allQuestions.length === 0) throw new Error("No questions");
 
-      // Create attempt
       const { data: attempt, error: aErr } = await supabase
         .from("assessment_attempts")
         .insert({
@@ -213,7 +231,6 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
         .single();
       if (aErr) throw aErr;
 
-      // Calculate score and insert responses
       let score = 0;
       const responses = adaptiveState.servedQuestions.map((sq) => {
         const question = allQuestions.find((q) => q.id === sq.questionId)!;
@@ -221,7 +238,7 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
         return {
           attempt_id: attempt.id,
           question_id: sq.questionId,
-          selected_option: null, // we don't track individual selections in adaptive mode
+          selected_option: null,
           is_correct: sq.wasCorrect,
           difficulty_level: sq.difficulty,
         };
@@ -230,7 +247,6 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
       const { error: rErr } = await supabase.from("attempt_responses").insert(responses);
       if (rErr) throw rErr;
 
-      // Update attempt with score
       const { error: uErr } = await supabase
         .from("assessment_attempts")
         .update({
@@ -271,7 +287,6 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
     );
   }
 
-  // Quiz Complete — show summary before submit
   if (isQuizComplete) {
     const correctCount = adaptiveState.servedQuestions.filter((q) => q.wasCorrect).length;
     const scorePercent = Math.round((correctCount / totalQuestions) * 100);
@@ -336,7 +351,6 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
     );
   }
 
-  // Active quiz
   if (!currentQuestion) return null;
 
   const options = (Array.isArray(currentQuestion.options) ? currentQuestion.options : []) as string[];
@@ -364,7 +378,6 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
         </span>
       </div>
 
-      {/* Adaptive indicator */}
       <div className="flex items-center gap-2 mb-4">
         <div className="flex gap-1">
           {DIFFICULTY_ORDER.map((diff) => (
@@ -405,17 +418,17 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
           >
             <div className="space-y-3">
               {options.map((opt, oIdx) => {
-                const isCorrect = oIdx === currentQuestion.correct_option;
                 const isSelected = selectedAnswer === oIdx;
+                const isCorrectOption = correctOptionIdx === oIdx;
                 return (
                   <Label
                     key={oIdx}
                     htmlFor={`opt-${currentQuestion.id}-${oIdx}`}
                     className={cn(
                       "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                      showFeedback && isCorrect
+                      showFeedback && isCorrectOption
                         ? "border-primary bg-primary/10 text-primary font-medium"
-                        : showFeedback && isSelected && !isCorrect
+                        : showFeedback && isSelected && !lastAnswerCorrect
                         ? "border-destructive bg-destructive/10 text-destructive"
                         : isSelected
                         ? "border-primary bg-primary/5"
@@ -425,8 +438,8 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
                   >
                     <RadioGroupItem value={String(oIdx)} id={`opt-${currentQuestion.id}-${oIdx}`} disabled={showFeedback} />
                     <span className="text-sm">{opt}</span>
-                    {showFeedback && isCorrect && <span className="ml-auto text-xs">✓ Correct</span>}
-                    {showFeedback && isSelected && !isCorrect && <span className="ml-auto text-xs">✗</span>}
+                    {showFeedback && isCorrectOption && <span className="ml-auto text-xs">✓ Correct</span>}
+                    {showFeedback && isSelected && !lastAnswerCorrect && <span className="ml-auto text-xs">✗</span>}
                   </Label>
                 );
               })}
@@ -439,43 +452,36 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
               animate={{ opacity: 1, y: 0 }}
               className={cn(
                 "mt-4 p-3 rounded-lg text-sm font-medium",
-                selectedAnswer === currentQuestion.correct_option
+                lastAnswerCorrect
                   ? "bg-primary/10 text-primary"
                   : "bg-destructive/10 text-destructive"
               )}
             >
-              {selectedAnswer === currentQuestion.correct_option
+              {lastAnswerCorrect
                 ? "🎉 Correct! Moving to the next question..."
-                : "Not quite. The correct answer is highlighted above."}
+                : "Not quite. Better luck on the next one!"}
             </motion.div>
           )}
         </motion.div>
       </AnimatePresence>
 
       <div className="flex justify-end mt-6">
-        <Button onClick={handleAnswer} disabled={selectedAnswer === null || showFeedback}>
-          Confirm Answer
+        <Button onClick={handleAnswer} disabled={selectedAnswer === null || showFeedback || isValidating}>
+          {isValidating ? "Checking..." : "Confirm Answer"}
         </Button>
       </div>
 
-      {/* Mini progress dots */}
       <div className="flex gap-1 justify-center mt-6 flex-wrap">
         {adaptiveState.servedQuestions.map((sq, i) => (
           <div
             key={i}
             className={cn(
-              "w-6 h-6 rounded text-[10px] font-bold flex items-center justify-center",
+              "w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center",
               sq.wasCorrect ? "bg-primary/20 text-primary" : "bg-destructive/20 text-destructive"
             )}
           >
-            {i + 1}
+            {sq.wasCorrect ? "✓" : "✗"}
           </div>
-        ))}
-        <div className="w-6 h-6 rounded text-[10px] font-bold flex items-center justify-center bg-primary text-primary-foreground">
-          {answeredIds.size + 1}
-        </div>
-        {Array.from({ length: totalQuestions - answeredIds.size - 1 }).map((_, i) => (
-          <div key={`future-${i}`} className="w-6 h-6 rounded bg-secondary" />
         ))}
       </div>
     </div>
