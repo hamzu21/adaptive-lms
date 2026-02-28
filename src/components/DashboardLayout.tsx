@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BookOpen, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -84,6 +85,8 @@ const DashboardLayout = ({ children, title, navItems }: DashboardLayoutProps) =>
   const navigate = useNavigate();
   const { profile, role, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const swipeDirection = useRef<number>(0); // -1 = left (next), 1 = right (prev)
+  const prevPathRef = useRef(location.pathname);
 
   // Swipe gesture state
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -106,9 +109,24 @@ const DashboardLayout = ({ children, title, navItems }: DashboardLayoutProps) =>
 
     const nextIndex = dx < 0 ? currentIndex + 1 : currentIndex - 1;
     if (nextIndex >= 0 && nextIndex < navItems.length) {
+      swipeDirection.current = dx < 0 ? -1 : 1;
       navigate(navItems[nextIndex].href);
     }
   }, [navItems, location.pathname, navigate]);
+
+  // Track direction for non-swipe navigations (tab clicks)
+  if (prevPathRef.current !== location.pathname) {
+    const prevIndex = navItems.findIndex((i) => i.href === prevPathRef.current);
+    const currIndex = navItems.findIndex((i) => i.href === location.pathname);
+    if (swipeDirection.current === 0 && prevIndex !== -1 && currIndex !== -1) {
+      swipeDirection.current = currIndex > prevIndex ? -1 : 1;
+    }
+    prevPathRef.current = location.pathname;
+  }
+
+  const direction = swipeDirection.current;
+  // Reset after capturing
+  const resetDirection = () => { swipeDirection.current = 0; };
 
   const handleSignOut = async () => {
     setMobileOpen(false);
@@ -145,11 +163,22 @@ const DashboardLayout = ({ children, title, navItems }: DashboardLayoutProps) =>
           </div>
         </header>
         <main
-          className="flex-1 p-4 sm:p-6 overflow-y-auto pb-20 lg:pb-6"
+          className="flex-1 overflow-y-auto pb-20 lg:pb-6"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          {children}
+          <AnimatePresence mode="wait" initial={false} onExitComplete={resetDirection}>
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, x: direction * -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: direction * 30 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="p-4 sm:p-6"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
 
         {/* Mobile Bottom Tab Bar */}
