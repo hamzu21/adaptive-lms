@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, BarChart3, FileText, TrendingUp, CheckCircle2, Clock, ArrowLeft, AlertCircle, ClipboardList, Bot } from "lucide-react";
+import AdaptiveQuizEngine from "@/components/AdaptiveQuizEngine";
+import { BookOpen, BarChart3, FileText, TrendingUp, CheckCircle2, Clock, ArrowLeft, AlertCircle, ClipboardList, Bot, Brain, Target, Zap } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -42,7 +43,7 @@ const StudentAssessments = () => {
         )}
         {view.mode === "quiz" && (
           <motion.div key="quiz" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-            <QuizTaker
+            <AdaptiveQuizEngine
               assessmentId={view.assessmentId}
               userId={user!.id}
               onBack={() => setView({ mode: "list" })}
@@ -178,180 +179,7 @@ function AssessmentList({ userId, onStart, onViewResult }: { userId?: string; on
   );
 }
 
-/* ─── Quiz Taker ─── */
-function QuizTaker({ assessmentId, userId, onBack, onComplete }: { assessmentId: string; userId: string; onBack: () => void; onComplete: (attemptId: string) => void }) {
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, number>>({});
-
-  const { data: assessment } = useQuery({
-    queryKey: ["quiz-assessment", assessmentId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("assessments").select("id, title, total_marks").eq("id", assessmentId).single();
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: questions, isLoading } = useQuery({
-    queryKey: ["quiz-questions", assessmentId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("questions")
-        .select("id, question_text, options, correct_option, marks, position")
-        .eq("assessment_id", assessmentId)
-        .order("position", { ascending: true });
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const submitMutation = useMutation({
-    mutationFn: async () => {
-      if (!questions || questions.length === 0) throw new Error("No questions");
-
-      // Create attempt
-      const { data: attempt, error: aErr } = await supabase
-        .from("assessment_attempts")
-        .insert({ student_id: userId, assessment_id: assessmentId })
-        .select("id")
-        .single();
-      if (aErr) throw aErr;
-
-      // Calculate score and insert responses
-      let score = 0;
-      const responses = questions.map((q) => {
-        const selected = answers[q.id] ?? -1;
-        const correct = selected === (q as any).correct_option;
-        if (correct) score += q.marks;
-        return {
-          attempt_id: attempt.id,
-          question_id: q.id,
-          selected_option: selected >= 0 ? selected : null,
-          is_correct: correct,
-        };
-      });
-
-      const { error: rErr } = await supabase.from("attempt_responses").insert(responses);
-      if (rErr) throw rErr;
-
-      // Update attempt with score
-      const { error: uErr } = await supabase
-        .from("assessment_attempts")
-        .update({ score, total_marks: assessment?.total_marks || 0, completed_at: new Date().toISOString() })
-        .eq("id", attempt.id);
-      if (uErr) throw uErr;
-
-      return attempt.id;
-    },
-    onSuccess: (attemptId) => {
-      toast.success("Quiz submitted!");
-      onComplete(attemptId);
-    },
-    onError: () => toast.error("Failed to submit quiz"),
-  });
-
-  if (isLoading) {
-    return <div className="space-y-4"><Skeleton className="h-8 w-64" /><Skeleton className="h-48" /></div>;
-  }
-
-  if (!questions || questions.length === 0) {
-    return (
-      <div className="text-center py-16 text-muted-foreground">
-        <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-40" />
-        <p>This assessment has no questions yet.</p>
-        <Button variant="ghost" className="mt-4" onClick={onBack}><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
-      </div>
-    );
-  }
-
-  const q = questions[currentIdx];
-  const options = (Array.isArray(q.options) ? q.options : []) as string[];
-  const total = questions.length;
-  const answered = Object.keys(answers).length;
-
-  return (
-    <div className="max-w-2xl mx-auto">
-      <button onClick={onBack} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Back to assessments
-      </button>
-
-      <h2 className="text-lg font-semibold mb-2">{assessment?.title}</h2>
-      <div className="flex items-center gap-3 mb-6">
-        <Progress value={(answered / total) * 100} className="h-2 flex-1" />
-        <span className="text-sm text-muted-foreground">{answered}/{total} answered</span>
-      </div>
-
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={q.id}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.15 }}
-          className="bg-card rounded-xl border border-border p-6"
-        >
-          <div className="flex justify-between items-start mb-4">
-            <span className="text-xs font-medium text-muted-foreground">Question {currentIdx + 1} of {total}</span>
-            <span className="text-xs text-muted-foreground">{q.marks} mark{q.marks !== 1 ? "s" : ""}</span>
-          </div>
-          <p className="font-medium mb-6">{q.question_text}</p>
-
-          <RadioGroup
-            value={answers[q.id] !== undefined ? String(answers[q.id]) : ""}
-            onValueChange={(v) => setAnswers((prev) => ({ ...prev, [q.id]: parseInt(v) }))}
-          >
-            <div className="space-y-3">
-              {options.map((opt, oIdx) => (
-                <Label
-                  key={oIdx}
-                  htmlFor={`opt-${q.id}-${oIdx}`}
-                  className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
-                    answers[q.id] === oIdx ? "border-primary bg-primary/5" : "border-border hover:bg-secondary"
-                  )}
-                >
-                  <RadioGroupItem value={String(oIdx)} id={`opt-${q.id}-${oIdx}`} />
-                  <span className="text-sm">{opt}</span>
-                </Label>
-              ))}
-            </div>
-          </RadioGroup>
-        </motion.div>
-      </AnimatePresence>
-
-      <div className="flex justify-between mt-6">
-        <Button variant="outline" disabled={currentIdx === 0} onClick={() => setCurrentIdx((i) => i - 1)}>
-          Previous
-        </Button>
-        {currentIdx < total - 1 ? (
-          <Button onClick={() => setCurrentIdx((i) => i + 1)}>Next</Button>
-        ) : (
-          <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending || answered < total}>
-            {answered < total ? `Answer all (${total - answered} left)` : "Submit Quiz"}
-          </Button>
-        )}
-      </div>
-
-      {/* Question navigation dots */}
-      <div className="flex gap-1.5 justify-center mt-6 flex-wrap">
-        {questions.map((qq, i) => (
-          <button
-            key={qq.id}
-            onClick={() => setCurrentIdx(i)}
-            className={cn(
-              "w-8 h-8 rounded-lg text-xs font-medium transition-colors",
-              i === currentIdx ? "bg-primary text-primary-foreground" :
-              answers[qq.id] !== undefined ? "bg-primary/20 text-primary" :
-              "bg-secondary text-muted-foreground"
-            )}
-          >
-            {i + 1}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+/* Old QuizTaker removed — replaced by AdaptiveQuizEngine component */
 
 /* ─── Result View ─── */
 function ResultView({ attemptId, onBack }: { attemptId: string; onBack: () => void }) {
@@ -360,14 +188,14 @@ function ResultView({ attemptId, onBack }: { attemptId: string; onBack: () => vo
     queryFn: async () => {
       const { data: attempt, error: aErr } = await supabase
         .from("assessment_attempts")
-        .select("id, score, total_marks, assessment_id, assessments(title)")
+        .select("id, score, total_marks, assessment_id, is_adaptive, difficulty_progression, assessments(title)")
         .eq("id", attemptId)
         .single();
       if (aErr) throw aErr;
 
       const { data: responses } = await supabase
         .from("attempt_responses")
-        .select("question_id, selected_option, is_correct, questions!inner(question_text, options, correct_option, marks)")
+        .select("question_id, selected_option, is_correct, difficulty_level, questions!inner(question_text, options, correct_option, marks, difficulty)")
         .eq("attempt_id", attemptId) as any;
 
       return { attempt, responses: responses || [] };
@@ -402,6 +230,12 @@ function ResultView({ attemptId, onBack }: { attemptId: string; onBack: () => vo
           )}
         </div>
         <h2 className="text-xl font-bold mb-1">{(attempt as any).assessments?.title}</h2>
+        {(attempt as any).is_adaptive && (
+          <div className="flex items-center justify-center gap-1 mb-2">
+            <Brain className="w-4 h-4 text-primary" />
+            <span className="text-xs text-primary font-medium">Adaptive Quiz</span>
+          </div>
+        )}
         <p className="text-3xl font-bold mb-1">
           <span className={passed ? "text-primary" : "text-destructive"}>{scorePercent}%</span>
         </p>
@@ -422,7 +256,17 @@ function ResultView({ attemptId, onBack }: { attemptId: string; onBack: () => vo
                 )}>
                   {i + 1}
                 </span>
-                <p className="text-sm font-medium">{q?.question_text}</p>
+                <p className="text-sm font-medium flex-1">{q?.question_text}</p>
+                {(r.difficulty_level || q?.difficulty) && (
+                  <span className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0",
+                    (r.difficulty_level || q?.difficulty) === "easy" ? "bg-emerald-500/10 text-emerald-600" :
+                    (r.difficulty_level || q?.difficulty) === "hard" ? "bg-red-500/10 text-red-600" :
+                    "bg-amber-500/10 text-amber-600"
+                  )}>
+                    {(r.difficulty_level || q?.difficulty)?.charAt(0).toUpperCase() + (r.difficulty_level || q?.difficulty)?.slice(1)}
+                  </span>
+                )}
               </div>
               <div className="space-y-2 ml-9">
                 {options.map((opt: string, oIdx: number) => {
