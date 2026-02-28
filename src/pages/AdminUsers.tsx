@@ -1,6 +1,6 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BarChart3, Users, BookOpen, Settings, Search, Trash2, Edit2, Check, X } from "lucide-react";
+import { BarChart3, Users, BookOpen, Settings, Search, Trash2, Edit2, Check, X, UserCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ const navItems = [
   { label: "Dashboard", href: "/admin", icon: <BarChart3 className="w-4 h-4" /> },
   { label: "Users", href: "/admin/users", icon: <Users className="w-4 h-4" /> },
   { label: "Courses", href: "/admin/courses", icon: <BookOpen className="w-4 h-4" /> },
+  { label: "Enrollments", href: "/admin/enrollments", icon: <UserCheck className="w-4 h-4" /> },
   { label: "Settings", href: "/admin/settings", icon: <Settings className="w-4 h-4" /> },
 ];
 
