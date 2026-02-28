@@ -30,6 +30,7 @@ interface QuestionForm {
   correct_option: number;
   marks: number;
   position: number;
+  difficulty: "easy" | "medium" | "hard";
   isNew?: boolean;
 }
 
@@ -47,6 +48,7 @@ const emptyQuestion = (pos: number): QuestionForm => ({
   correct_option: 0,
   marks: 1,
   position: pos,
+  difficulty: "medium",
   isNew: true,
 });
 
@@ -129,6 +131,7 @@ const TeacherAssessments = () => {
           correct_option: q.correct_option,
           marks: q.marks,
           position: q.position,
+          difficulty: q.difficulty,
         }).eq("id", q.id!);
       }
 
@@ -141,6 +144,7 @@ const TeacherAssessments = () => {
             correct_option: q.correct_option,
             marks: q.marks,
             position: q.position,
+            difficulty: q.difficulty,
           }))
         );
         if (error) throw error;
@@ -181,6 +185,7 @@ const TeacherAssessments = () => {
       correct_option: q.correct_option,
       marks: q.marks,
       position: q.position,
+      difficulty: (q as any).difficulty || "medium",
     })));
   };
 
@@ -300,7 +305,7 @@ const TeacherAssessments = () => {
                 {questions.map((q, qIdx) => (
                   <div key={qIdx} className="border border-border rounded-lg p-5 space-y-4 bg-muted/30">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-1 rounded">Q{qIdx + 1}</span>
                         <Input
                           type="number"
@@ -310,6 +315,16 @@ const TeacherAssessments = () => {
                           min={1}
                         />
                         <span className="text-xs text-muted-foreground">marks</span>
+                        <Select value={q.difficulty} onValueChange={(v) => updateQuestion(qIdx, "difficulty", v)}>
+                          <SelectTrigger className="w-28 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="easy"><span className="text-emerald-600">● Easy</span></SelectItem>
+                            <SelectItem value="medium"><span className="text-amber-600">● Medium</span></SelectItem>
+                            <SelectItem value="hard"><span className="text-red-600">● Hard</span></SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <Button variant="ghost" size="sm" onClick={() => removeQuestion(qIdx)} className="text-destructive hover:text-destructive shrink-0">
                         <Trash2 className="w-4 h-4" />
@@ -369,6 +384,24 @@ const TeacherAssessments = () => {
               <div className="flex justify-between"><span className="text-muted-foreground">Questions</span><span className="font-medium">{questions.length}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Total marks</span><span className="font-medium">{questions.reduce((s, q) => s + q.marks, 0)}</span></div>
             </div>
+            {questions.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-xs text-muted-foreground mb-2">Difficulty Distribution</p>
+                <div className="space-y-1">
+                  {(["easy", "medium", "hard"] as const).map((d) => {
+                    const count = questions.filter((q) => q.difficulty === d).length;
+                    return (
+                      <div key={d} className="flex justify-between text-xs">
+                        <span className={d === "easy" ? "text-emerald-600" : d === "hard" ? "text-red-600" : "text-amber-600"}>
+                          {d.charAt(0).toUpperCase() + d.slice(1)}
+                        </span>
+                        <span className="font-medium">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           <Button className="w-full gap-2" onClick={() => saveAssessment.mutate()} disabled={saveAssessment.isPending}>

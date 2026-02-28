@@ -18,7 +18,9 @@ export type Database = {
         Row: {
           assessment_id: string
           completed_at: string | null
+          difficulty_progression: Json | null
           id: string
+          is_adaptive: boolean
           score: number | null
           started_at: string
           student_id: string
@@ -27,7 +29,9 @@ export type Database = {
         Insert: {
           assessment_id: string
           completed_at?: string | null
+          difficulty_progression?: Json | null
           id?: string
+          is_adaptive?: boolean
           score?: number | null
           started_at?: string
           student_id: string
@@ -36,7 +40,9 @@ export type Database = {
         Update: {
           assessment_id?: string
           completed_at?: string | null
+          difficulty_progression?: Json | null
           id?: string
+          is_adaptive?: boolean
           score?: number | null
           started_at?: string
           student_id?: string
@@ -187,6 +193,7 @@ export type Database = {
       attempt_responses: {
         Row: {
           attempt_id: string
+          difficulty_level: string | null
           id: string
           is_correct: boolean
           question_id: string
@@ -194,6 +201,7 @@ export type Database = {
         }
         Insert: {
           attempt_id: string
+          difficulty_level?: string | null
           id?: string
           is_correct?: boolean
           question_id: string
@@ -201,6 +209,7 @@ export type Database = {
         }
         Update: {
           attempt_id?: string
+          difficulty_level?: string | null
           id?: string
           is_correct?: boolean
           question_id?: string
@@ -508,6 +517,7 @@ export type Database = {
         Row: {
           assessment_id: string
           correct_option: number
+          difficulty: string
           id: string
           marks: number
           options: Json
@@ -517,6 +527,7 @@ export type Database = {
         Insert: {
           assessment_id: string
           correct_option: number
+          difficulty?: string
           id?: string
           marks?: number
           options: Json
@@ -526,6 +537,7 @@ export type Database = {
         Update: {
           assessment_id?: string
           correct_option?: number
+          difficulty?: string
           id?: string
           marks?: number
           options?: Json
