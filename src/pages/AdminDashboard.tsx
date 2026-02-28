@@ -12,6 +12,7 @@ const navItems = [
   { label: "Dashboard", href: "/admin", icon: <BarChart3 className="w-4 h-4" /> },
   { label: "Users", href: "/admin/users", icon: <Users className="w-4 h-4" /> },
   { label: "Courses", href: "/admin/courses", icon: <BookOpen className="w-4 h-4" /> },
+  { label: "Enrollments", href: "/admin/enrollments", icon: <UserCheck className="w-4 h-4" /> },
   { label: "Settings", href: "/admin/settings", icon: <Settings className="w-4 h-4" /> },
 ];
 
