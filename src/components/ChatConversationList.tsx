@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Plus, MessageSquare, Trash2, Loader2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, MessageSquare, Trash2, Loader2, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -25,6 +26,18 @@ interface Props {
 
 const ChatConversationList = ({ conversations, activeId, loading, onSelect, onNew, onDelete }: Props) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return conversations;
+    const q = search.toLowerCase();
+    return conversations.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        c.lesson_title?.toLowerCase().includes(q) ||
+        c.course_name?.toLowerCase().includes(q)
+    );
+  }, [conversations, search]);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -35,22 +48,43 @@ const ChatConversationList = ({ conversations, activeId, loading, onSelect, onNe
 
   return (
     <div className="w-64 border-r border-border flex flex-col bg-muted/30">
-      <div className="p-3 border-b border-border">
+      <div className="p-3 border-b border-border space-y-2">
         <Button onClick={onNew} variant="outline" size="sm" className="w-full gap-2">
           <Plus className="w-4 h-4" />
           New Chat
         </Button>
+        {conversations.length > 2 && (
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search chats..."
+              className="h-8 pl-8 pr-7 text-xs"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <ScrollArea className="flex-1">
         {loading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
-        ) : conversations.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-8 px-3">No conversations yet</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-8 px-3">
+            {search ? "No matching conversations" : "No conversations yet"}
+          </p>
         ) : (
           <div className="p-2 space-y-1">
-            {conversations.map((c) => (
+            {filtered.map((c) => (
               <button
                 key={c.id}
                 onClick={() => onSelect(c.id)}
