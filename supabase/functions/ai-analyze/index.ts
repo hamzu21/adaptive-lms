@@ -24,46 +24,68 @@ serve(async (req) => {
     if (authError || !user) throw new Error("Unauthorized");
 
     // Fetch student performance data
-    const [enrollRes, attemptsRes, progressRes, lessonsRes] = await Promise.all([
+    const [enrollRes, attemptsRes, progressRes] = await Promise.all([
       supabase.from("enrollments").select("course_id, courses(id, title, subject)").eq("student_id", user.id),
-      supabase.from("assessment_attempts").select("score, total_marks, assessment_id, assessments(title, course_id, courses(title, subject))").eq("student_id", user.id).not("completed_at", "is", null),
-      supabase.from("lesson_progress").select("lesson_id, completed, lessons(title, course_id, courses(title, subject))").eq("student_id", user.id).eq("completed", true),
-      supabase.from("enrollments").select("course_id").eq("student_id", user.id),
+      supabase.from("assessment_attempts").select("score, total_marks, assessment_id, completed_at, assessments(title, course_id, courses(title, subject))").eq("student_id", user.id).not("completed_at", "is", null).order("completed_at", { ascending: false }),
+      supabase.from("lesson_progress").select("lesson_id, completed, lessons(id, title, course_id, position, courses(title, subject))").eq("student_id", user.id).eq("completed", true),
     ]);
 
     const enrollments = enrollRes.data || [];
     const attempts = attemptsRes.data || [];
     const completedLessons = progressRes.data || [];
 
-    // Get total lessons per course
+    // Get ALL lessons for enrolled courses (needed for finding incomplete ones)
     const courseIds = enrollments.map((e: any) => e.course_id);
-    let totalLessonsData: any[] = [];
+    let allLessons: any[] = [];
     if (courseIds.length > 0) {
-      const { data } = await supabase.from("lessons").select("id, course_id").in("course_id", courseIds);
-      totalLessonsData = data || [];
+      const { data } = await supabase.from("lessons").select("id, title, course_id, position, courses(title, subject)").in("course_id", courseIds).order("position", { ascending: true });
+      allLessons = data || [];
     }
 
-    // Build performance summary for AI
+    const completedLessonIds = new Set(completedLessons.map((p: any) => p.lesson_id));
+
+    // Build per-course performance + incomplete lessons
     const coursePerformance = enrollments.map((e: any) => {
       const course = e.courses as any;
       const courseAttempts = attempts.filter((a: any) => a.assessments?.course_id === e.course_id);
-      const courseLessons = totalLessonsData.filter((l: any) => l.course_id === e.course_id);
-      const courseCompleted = completedLessons.filter((p: any) => p.lessons?.course_id === e.course_id);
+      const courseLessons = allLessons.filter((l: any) => l.course_id === e.course_id);
+      const courseCompleted = courseLessons.filter((l: any) => completedLessonIds.has(l.id));
+      const incompleteLessons = courseLessons.filter((l: any) => !completedLessonIds.has(l.id)).slice(0, 3);
+
       const avgScore = courseAttempts.length > 0
         ? Math.round(courseAttempts.reduce((s: number, a: any) => s + ((a.score || 0) / (a.total_marks || 1)) * 100, 0) / courseAttempts.length)
         : null;
+
+      // Recent score trend (last 3 attempts)
+      const recentAttempts = courseAttempts.slice(0, 3);
+      const recentAvg = recentAttempts.length > 0
+        ? Math.round(recentAttempts.reduce((s: number, a: any) => s + ((a.score || 0) / (a.total_marks || 1)) * 100, 0) / recentAttempts.length)
+        : null;
+
       return {
+        courseId: e.course_id,
         course: course?.title || "Unknown",
         subject: course?.subject || "Unknown",
         quizzesTaken: courseAttempts.length,
         avgScore,
+        recentAvgScore: recentAvg,
         lessonsCompleted: courseCompleted.length,
         totalLessons: courseLessons.length,
         completionRate: courseLessons.length > 0 ? Math.round((courseCompleted.length / courseLessons.length) * 100) : 0,
+        incompleteLessons: incompleteLessons.map((l: any) => ({
+          id: l.id,
+          title: l.title,
+          position: l.position,
+        })),
       };
     });
 
-    const performanceSummary = JSON.stringify({ coursePerformance, totalQuizzes: attempts.length, totalLessonsCompleted: completedLessons.length });
+    const performanceSummary = JSON.stringify({
+      coursePerformance,
+      totalQuizzes: attempts.length,
+      totalLessonsCompleted: completedLessons.length,
+      totalLessonsAvailable: allLessons.length,
+    });
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
@@ -80,12 +102,26 @@ serve(async (req) => {
           {
             role: "system",
             content: `You are an educational AI tutor analyzing a student's learning performance. Based on their data, provide:
-1. "strengths": Array of {topic, reason} - subjects/courses where student excels (high scores, good completion)
+1. "strengths": Array of {topic, reason} - subjects/courses where student excels
 2. "weaknesses": Array of {topic, reason} - subjects/courses needing improvement
 3. "recommendations": Array of {title, description, priority} - specific actionable learning recommendations (priority: high/medium/low)
-4. "summary": A brief 2-3 sentence motivational summary of overall performance
+4. "summary": A brief 2-3 sentence motivational summary
+5. "learningPath": Array of recommended next steps, each with:
+   - "courseId": the course ID from the data
+   - "courseName": course name
+   - "lessonId": specific lesson ID to do next (from incompleteLessons)
+   - "lessonTitle": lesson title
+   - "reason": why this lesson is recommended now (1 sentence)
+   - "difficulty": recommended difficulty level ("review" for struggling students who should revisit basics, "standard" for on-track students, "challenge" for excelling students who should push ahead)
+   - "urgency": "high" (falling behind), "medium" (on track), "low" (ahead of pace)
+6. "difficultyProfile": Overall assessment of where the student is:
+   - "level": "beginner" | "intermediate" | "advanced"
+   - "description": 1 sentence summary of their learning level
+   - "adjustmentNote": specific advice on how to adjust difficulty
 
-Return ONLY valid JSON with these 4 keys. If student has no data, provide encouraging defaults about getting started.`,
+Use the incompleteLessons data to recommend SPECIFIC real lessons. Prioritize courses where the student is struggling (low scores, low completion).
+If student has no data, provide encouraging defaults about getting started.
+Return ONLY valid JSON.`,
           },
           {
             role: "user",
@@ -97,7 +133,7 @@ Return ONLY valid JSON with these 4 keys. If student has no data, provide encour
             type: "function",
             function: {
               name: "analyze_performance",
-              description: "Return structured analysis of student performance",
+              description: "Return structured analysis of student performance with adaptive learning path",
               parameters: {
                 type: "object",
                 properties: {
@@ -111,11 +147,44 @@ Return ONLY valid JSON with these 4 keys. If student has no data, provide encour
                   },
                   recommendations: {
                     type: "array",
-                    items: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, priority: { type: "string", enum: ["high", "medium", "low"] } }, required: ["title", "description", "priority"] },
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        description: { type: "string" },
+                        priority: { type: "string", enum: ["high", "medium", "low"] },
+                      },
+                      required: ["title", "description", "priority"],
+                    },
                   },
                   summary: { type: "string" },
+                  learningPath: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        courseId: { type: "string" },
+                        courseName: { type: "string" },
+                        lessonId: { type: "string" },
+                        lessonTitle: { type: "string" },
+                        reason: { type: "string" },
+                        difficulty: { type: "string", enum: ["review", "standard", "challenge"] },
+                        urgency: { type: "string", enum: ["high", "medium", "low"] },
+                      },
+                      required: ["courseId", "courseName", "lessonId", "lessonTitle", "reason", "difficulty", "urgency"],
+                    },
+                  },
+                  difficultyProfile: {
+                    type: "object",
+                    properties: {
+                      level: { type: "string", enum: ["beginner", "intermediate", "advanced"] },
+                      description: { type: "string" },
+                      adjustmentNote: { type: "string" },
+                    },
+                    required: ["level", "description", "adjustmentNote"],
+                  },
                 },
-                required: ["strengths", "weaknesses", "recommendations", "summary"],
+                required: ["strengths", "weaknesses", "recommendations", "summary", "learningPath", "difficultyProfile"],
               },
             },
           },
@@ -142,7 +211,6 @@ Return ONLY valid JSON with these 4 keys. If student has no data, provide encour
     if (toolCall?.function?.arguments) {
       analysis = JSON.parse(toolCall.function.arguments);
     } else {
-      // Fallback: try to parse content directly
       const content = aiData.choices?.[0]?.message?.content || "{}";
       analysis = JSON.parse(content);
     }
