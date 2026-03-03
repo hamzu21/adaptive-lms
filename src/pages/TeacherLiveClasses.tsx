@@ -58,11 +58,16 @@ const TeacherLiveClasses = () => {
   const createClass = useMutation({
     mutationFn: async () => {
       const roomId = `adaptlearn-${crypto.randomUUID().slice(0, 8)}`;
-      // Convert local datetime-local value to proper ISO string with timezone
-      const localDate = new Date(form.scheduled_at);
+
+      // Parse datetime-local explicitly as LOCAL time, then convert to UTC ISO
+      const [datePart, timePart] = form.scheduled_at.split("T");
+      const [year, month, day] = datePart.split("-").map(Number);
+      const [hour, minute] = timePart.split(":").map(Number);
+      const scheduledAtIso = new Date(year, month - 1, day, hour, minute).toISOString();
+
       const { error } = await supabase.from("live_classes").insert({
         ...form,
-        scheduled_at: localDate.toISOString(),
+        scheduled_at: scheduledAtIso,
         teacher_id: user!.id,
         jitsi_room_id: roomId,
       });
