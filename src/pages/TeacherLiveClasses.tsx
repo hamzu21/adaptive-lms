@@ -30,6 +30,7 @@ const TeacherLiveClasses = () => {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  const [activeClassId, setActiveClassId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", description: "", course_id: "", scheduled_at: "" });
 
   const { data: courses } = useQuery({
@@ -119,13 +120,18 @@ const TeacherLiveClasses = () => {
   if (activeRoomId) {
     return (
       <DashboardLayout title="Live Class" navItems={navItems}>
-        <Button variant="outline" size="sm" onClick={() => setActiveRoomId(null)} className="mb-4">
+        <Button variant="outline" size="sm" onClick={() => { setActiveRoomId(null); setActiveClassId(null); }} className="mb-4">
           ← Back to classes
         </Button>
         <JitsiMeetRoom
           roomId={activeRoomId}
           displayName={profile?.full_name || "Teacher"}
-          onClose={() => setActiveRoomId(null)}
+          onConferenceJoined={() => {
+            if (activeClassId) {
+              updateStatus.mutate({ id: activeClassId, status: "live" });
+            }
+          }}
+          onClose={() => { setActiveRoomId(null); setActiveClassId(null); }}
         />
       </DashboardLayout>
     );
@@ -177,7 +183,7 @@ const TeacherLiveClasses = () => {
               </div>
               <div className="flex gap-2 shrink-0">
                 {lc.status === "scheduled" && (
-                  <Button size="sm" onClick={() => { updateStatus.mutate({ id: lc.id, status: "live" }); setActiveRoomId(lc.jitsi_room_id); }}>
+                  <Button size="sm" onClick={() => { setActiveClassId(lc.id); setActiveRoomId(lc.jitsi_room_id); }}>
                     <Play className="w-4 h-4 mr-1" /> Start
                   </Button>
                 )}

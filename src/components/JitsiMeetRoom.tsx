@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface JitsiMeetRoomProps {
   roomId: string;
   displayName: string;
   onClose: () => void;
+  onConferenceJoined?: () => void;
 }
 
-const JitsiMeetRoom = ({ roomId, displayName, onClose }: JitsiMeetRoomProps) => {
+const JitsiMeetRoom = ({ roomId, displayName, onClose, onConferenceJoined }: JitsiMeetRoomProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<any>(null);
 
@@ -53,6 +53,10 @@ const JitsiMeetRoom = ({ roomId, displayName, onClose }: JitsiMeetRoomProps) => 
       apiRef.current.addEventListener("readyToClose", () => {
         onClose();
       });
+
+      apiRef.current.addEventListener("videoConferenceJoined", () => {
+        onConferenceJoined?.();
+      });
     };
 
     // Load the Jitsi IFrame API script if not already loaded
@@ -72,7 +76,7 @@ const JitsiMeetRoom = ({ roomId, displayName, onClose }: JitsiMeetRoomProps) => 
         apiRef.current = null;
       }
     };
-  }, [roomId, displayName, onClose]);
+  }, [roomId, displayName, onClose, onConferenceJoined]);
 
   return (
     <div

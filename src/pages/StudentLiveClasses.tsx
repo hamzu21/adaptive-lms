@@ -99,12 +99,14 @@ const StudentLiveClasses = () => {
                 {lc.description && <p className="text-xs text-muted-foreground mt-1">{lc.description}</p>}
               </div>
               <div className="shrink-0">
-                {lc.status === "live" ? (
+                {lc.status === "live" && lc.started_at ? (
                   <Button size="sm" onClick={() => setActiveRoomId(lc.jitsi_room_id)}>
                     <Video className="w-4 h-4 mr-1" /> Join Now
                   </Button>
                 ) : (
-                  <span className="text-xs text-muted-foreground">Starts {format(new Date(lc.scheduled_at), "h:mm a")}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {lc.status === "live" ? "Teacher is starting the class..." : `Starts ${format(new Date(lc.scheduled_at), "h:mm a")}`}
+                  </span>
                 )}
               </div>
             </motion.div>
