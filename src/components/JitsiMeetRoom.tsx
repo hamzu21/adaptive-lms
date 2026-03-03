@@ -27,6 +27,9 @@ const JitsiMeetRoom = ({ roomId, displayName, onClose }: JitsiMeetRoomProps) => 
           startWithVideoMuted: false,
           prejoinPageEnabled: false,
           disableDeepLinking: true,
+          lobbyModeEnabled: false,
+          enableLobbyChat: false,
+          hideLobbyButton: true,
         },
         interfaceConfigOverwrite: {
           SHOW_JITSI_WATERMARK: false,
