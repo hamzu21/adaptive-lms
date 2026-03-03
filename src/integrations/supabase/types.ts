@@ -456,6 +456,59 @@ export type Database = {
           },
         ]
       }
+      live_classes: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string
+          ended_at: string | null
+          id: string
+          jitsi_room_id: string
+          scheduled_at: string
+          started_at: string | null
+          status: string
+          teacher_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description?: string
+          ended_at?: string | null
+          id?: string
+          jitsi_room_id: string
+          scheduled_at: string
+          started_at?: string | null
+          status?: string
+          teacher_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string
+          ended_at?: string | null
+          id?: string
+          jitsi_room_id?: string
+          scheduled_at?: string
+          started_at?: string | null
+          status?: string
+          teacher_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_classes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string

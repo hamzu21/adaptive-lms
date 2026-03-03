@@ -19,6 +19,7 @@ const navItems = [
   { label: "Courses", href: "/teacher/courses", icon: <BookOpen className="w-4 h-4" /> },
   { label: "Assessments", href: "/teacher/assessments", icon: <FileText className="w-4 h-4" /> },
   { label: "Assignments", href: "/teacher/assignments", icon: <ClipboardList className="w-4 h-4" /> },
+  { label: "Live Classes", href: "/teacher/live", icon: <Video className="w-4 h-4" /> },
   { label: "Analytics", href: "/teacher/analytics", icon: <TrendingUp className="w-4 h-4" /> },
 ];
 

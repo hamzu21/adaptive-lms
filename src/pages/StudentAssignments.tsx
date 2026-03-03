@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, BarChart3, FileText, TrendingUp, Upload, ClipboardList, Clock, CheckCircle2, AlertCircle, Loader2, Paperclip, X, Bot } from "lucide-react";
+import { BookOpen, BarChart3, FileText, TrendingUp, Upload, ClipboardList, Clock, CheckCircle2, AlertCircle, Loader2, Paperclip, X, Bot, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ const navItems = [
   { label: "My Courses", href: "/student/courses", icon: <BookOpen className="w-4 h-4" /> },
   { label: "Assessments", href: "/student/assessments", icon: <FileText className="w-4 h-4" /> },
   { label: "Assignments", href: "/student/assignments", icon: <ClipboardList className="w-4 h-4" /> },
+  { label: "Live Classes", href: "/student/live", icon: <Video className="w-4 h-4" /> },
   { label: "Progress", href: "/student/progress", icon: <TrendingUp className="w-4 h-4" /> },
   { label: "AI Assistant", href: "/student/ai-chat", icon: <Bot className="w-4 h-4" /> },
 ];
