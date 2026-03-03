@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BarChart3, Users, BookOpen, Settings, UserCheck, Save, Shield, Bell } from "lucide-react";
+import { BarChart3, Users, BookOpen, Settings, UserCheck, Save, Shield, Bell, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ const navItems = [
   { label: "Users", href: "/admin/users", icon: <Users className="w-4 h-4" /> },
   { label: "Courses", href: "/admin/courses", icon: <BookOpen className="w-4 h-4" /> },
   { label: "Enrollments", href: "/admin/enrollments", icon: <UserCheck className="w-4 h-4" /> },
+  { label: "Activity Logs", href: "/admin/activity-logs", icon: <Activity className="w-4 h-4" /> },
   { label: "Settings", href: "/admin/settings", icon: <Settings className="w-4 h-4" /> },
 ];
 

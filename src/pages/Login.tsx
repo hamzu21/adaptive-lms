@@ -21,12 +21,21 @@ const Login = () => {
     e.preventDefault();
     setSubmitting(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       toast.error(error.message);
       setSubmitting(false);
       return;
+    }
+
+    // Log login activity
+    if (data.user) {
+      supabase.from("activity_logs").insert({
+        user_id: data.user.id,
+        activity_type: "login",
+        metadata: { method: "email" },
+      }).then();
     }
 
     toast.success("Logged in successfully!");
