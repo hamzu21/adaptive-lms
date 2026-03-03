@@ -58,8 +58,11 @@ const TeacherLiveClasses = () => {
   const createClass = useMutation({
     mutationFn: async () => {
       const roomId = `adaptlearn-${crypto.randomUUID().slice(0, 8)}`;
+      // Convert local datetime-local value to proper ISO string with timezone
+      const localDate = new Date(form.scheduled_at);
       const { error } = await supabase.from("live_classes").insert({
         ...form,
+        scheduled_at: localDate.toISOString(),
         teacher_id: user!.id,
         jitsi_room_id: roomId,
       });
