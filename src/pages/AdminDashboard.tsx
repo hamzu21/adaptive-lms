@@ -1,5 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { BarChart3, Users, BookOpen, ShieldCheck, Settings, GraduationCap, ClipboardList, UserCheck } from "lucide-react";
+import { BarChart3, Users, BookOpen, ShieldCheck, Settings, GraduationCap, ClipboardList, UserCheck, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAdminStats } from "@/hooks/useCourses";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +13,7 @@ const navItems = [
   { label: "Users", href: "/admin/users", icon: <Users className="w-4 h-4" /> },
   { label: "Courses", href: "/admin/courses", icon: <BookOpen className="w-4 h-4" /> },
   { label: "Enrollments", href: "/admin/enrollments", icon: <UserCheck className="w-4 h-4" /> },
+  { label: "Activity Logs", href: "/admin/activity-logs", icon: <Activity className="w-4 h-4" /> },
   { label: "Settings", href: "/admin/settings", icon: <Settings className="w-4 h-4" /> },
 ];
 
