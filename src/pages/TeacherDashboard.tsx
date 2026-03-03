@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, BarChart3, Users, FileText, AlertTriangle, TrendingUp, CheckCircle2, Plus, XCircle, ClipboardList, Star, MessageSquare } from "lucide-react";
+import { BookOpen, BarChart3, Users, FileText, AlertTriangle, TrendingUp, CheckCircle2, Plus, XCircle, ClipboardList, Star, MessageSquare, Video } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTeacherStats } from "@/hooks/useCourses";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +18,7 @@ const navItems = [
   { label: "Courses", href: "/teacher/courses", icon: <BookOpen className="w-4 h-4" /> },
   { label: "Assessments", href: "/teacher/assessments", icon: <FileText className="w-4 h-4" /> },
   { label: "Assignments", href: "/teacher/assignments", icon: <ClipboardList className="w-4 h-4" /> },
+  { label: "Live Classes", href: "/teacher/live", icon: <Video className="w-4 h-4" /> },
   { label: "Analytics", href: "/teacher/analytics", icon: <TrendingUp className="w-4 h-4" /> },
 ];
 

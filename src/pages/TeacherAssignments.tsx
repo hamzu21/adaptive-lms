@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   BookOpen, BarChart3, Users, FileText, TrendingUp, Plus, Trash2, Save,
-  ArrowLeft, Eye, EyeOff, ClipboardList, CheckCircle2, Loader2, Download,
+  ArrowLeft, Eye, EyeOff, ClipboardList, CheckCircle2, Loader2, Download, Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ const navItems = [
   { label: "Courses", href: "/teacher/courses", icon: <BookOpen className="w-4 h-4" /> },
   { label: "Assessments", href: "/teacher/assessments", icon: <FileText className="w-4 h-4" /> },
   { label: "Assignments", href: "/teacher/assignments", icon: <ClipboardList className="w-4 h-4" /> },
+  { label: "Live Classes", href: "/teacher/live", icon: <Video className="w-4 h-4" /> },
   { label: "Analytics", href: "/teacher/analytics", icon: <TrendingUp className="w-4 h-4" /> },
 ];
 

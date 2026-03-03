@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import ChatConversationList from "@/components/ChatConversationList";
 import { useChatPersistence } from "@/hooks/useChatPersistence";
-import { BookOpen, BarChart3, FileText, TrendingUp, ClipboardList, Send, Bot, User, Loader2 } from "lucide-react";
+import { BookOpen, BarChart3, FileText, TrendingUp, ClipboardList, Send, Bot, User, Loader2, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,6 +17,7 @@ const navItems = [
   { label: "My Courses", href: "/student/courses", icon: <BookOpen className="w-4 h-4" /> },
   { label: "Assessments", href: "/student/assessments", icon: <FileText className="w-4 h-4" /> },
   { label: "Assignments", href: "/student/assignments", icon: <ClipboardList className="w-4 h-4" /> },
+  { label: "Live Classes", href: "/student/live", icon: <Video className="w-4 h-4" /> },
   { label: "Progress", href: "/student/progress", icon: <TrendingUp className="w-4 h-4" /> },
 ];
 

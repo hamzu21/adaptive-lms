@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, BarChart3, Users, FileText, UserPlus, Trash2, Search, TrendingUp, ClipboardList } from "lucide-react";
+import { BookOpen, BarChart3, Users, FileText, UserPlus, Trash2, Search, TrendingUp, ClipboardList, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +16,7 @@ const navItems = [
   { label: "Courses", href: "/teacher/courses", icon: <BookOpen className="w-4 h-4" /> },
   { label: "Assessments", href: "/teacher/assessments", icon: <FileText className="w-4 h-4" /> },
   { label: "Assignments", href: "/teacher/assignments", icon: <ClipboardList className="w-4 h-4" /> },
+  { label: "Live Classes", href: "/teacher/live", icon: <Video className="w-4 h-4" /> },
   { label: "Analytics", href: "/teacher/analytics", icon: <TrendingUp className="w-4 h-4" /> },
 ];
 
