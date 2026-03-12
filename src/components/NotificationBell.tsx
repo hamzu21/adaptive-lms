@@ -129,7 +129,7 @@ const NotificationBell = () => {
             notifications.map((n) => (
               <button
                 key={n.id}
-                onClick={() => !n.read && markRead(n.id)}
+                onClick={() => handleNotificationClick(n)}
                 className={cn(
                   "w-full text-left px-4 py-3 border-b border-border last:border-0 transition-colors hover:bg-muted/50",
                   !n.read && "bg-primary/5"
