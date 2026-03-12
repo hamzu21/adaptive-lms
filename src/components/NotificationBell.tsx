@@ -107,6 +107,8 @@ const NotificationBell = () => {
         return `${rolePrefix}/courses`;
       case "assignment_published":
         return `${rolePrefix}/assignments`;
+      case "assignment_submission":
+        return "/teacher/assignments";
       case "assignment_graded":
         return "/student/assignments";
       case "lesson_created":
