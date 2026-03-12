@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 
 interface Notification {
@@ -21,18 +22,20 @@ interface Notification {
 
 const NotificationBell = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
 
   const fetchNotifications = async () => {
     if (!user) return;
     const { data } = await supabase
       .from("notifications")
-      .select("id, title, message, read, created_at")
+      .select("id, title, message, read, created_at, metadata")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20);
-    if (data) setNotifications(data);
+    if (data) setNotifications(data as any);
     setLoading(false);
   };
 
@@ -82,8 +85,18 @@ const NotificationBell = () => {
     );
   };
 
+  const handleNotificationClick = (n: Notification) => {
+    if (!n.read) markRead(n.id);
+    const meta = (n as any).metadata;
+    const type = meta?.type;
+    if (type === "live_class_started" || type === "live_class_scheduled") {
+      setOpen(false);
+      navigate("/student/live");
+    }
+  };
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="w-5 h-5" />
@@ -116,7 +129,7 @@ const NotificationBell = () => {
             notifications.map((n) => (
               <button
                 key={n.id}
-                onClick={() => !n.read && markRead(n.id)}
+                onClick={() => handleNotificationClick(n)}
                 className={cn(
                   "w-full text-left px-4 py-3 border-b border-border last:border-0 transition-colors hover:bg-muted/50",
                   !n.read && "bg-primary/5"
