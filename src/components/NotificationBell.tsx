@@ -109,6 +109,8 @@ const NotificationBell = () => {
         return `${rolePrefix}/assignments`;
       case "assignment_graded":
         return "/student/assignments";
+      case "lesson_created":
+        return meta?.course_id ? `${rolePrefix}/courses/${meta.course_id}` : `${rolePrefix}/courses`;
       case "low_score_alert":
         return "/parent";
       default:
