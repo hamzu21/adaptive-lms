@@ -85,6 +85,16 @@ const NotificationBell = () => {
     );
   };
 
+  const handleNotificationClick = (n: Notification) => {
+    if (!n.read) markRead(n.id);
+    const meta = (n as any).metadata;
+    const type = meta?.type;
+    if (type === "live_class_started" || type === "live_class_scheduled") {
+      setOpen(false);
+      navigate("/student/live");
+    }
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
