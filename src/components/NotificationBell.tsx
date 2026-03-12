@@ -85,13 +85,44 @@ const NotificationBell = () => {
     );
   };
 
+  const getNotificationRoute = (meta: any): string | null => {
+    const type = meta?.type;
+    if (!type) return null;
+
+    const rolePrefix = role === "teacher" ? "/teacher" : role === "admin" ? "/admin" : "/student";
+
+    switch (type) {
+      case "live_class_started":
+      case "live_class_scheduled":
+        return role === "teacher" ? "/teacher/live" : "/student/live";
+      case "assessment_published":
+        return `${rolePrefix}/assessments`;
+      case "assessment_submission":
+        return "/teacher/assessments";
+      case "enrollment":
+        return role === "teacher" ? "/teacher/enrollments" : `${rolePrefix}/courses`;
+      case "enrolled":
+        return "/student/courses";
+      case "course_updated":
+        return `${rolePrefix}/courses`;
+      case "assignment_published":
+        return `${rolePrefix}/assignments`;
+      case "assignment_graded":
+        return "/student/assignments";
+      case "low_score_alert":
+        return "/parent";
+      default:
+        return null;
+    }
+  };
+
   const handleNotificationClick = (n: Notification) => {
     if (!n.read) markRead(n.id);
     const meta = (n as any).metadata;
-    const type = meta?.type;
-    if (type === "live_class_started" || type === "live_class_scheduled") {
+    const route = getNotificationRoute(meta);
+    if (route) {
       setOpen(false);
-      navigate("/student/live");
+      navigate(route);
     }
   };
 
