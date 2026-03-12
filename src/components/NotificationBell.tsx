@@ -31,11 +31,11 @@ const NotificationBell = () => {
     if (!user) return;
     const { data } = await supabase
       .from("notifications")
-      .select("id, title, message, read, created_at")
+      .select("id, title, message, read, created_at, metadata")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20);
-    if (data) setNotifications(data);
+    if (data) setNotifications(data as any);
     setLoading(false);
   };
 
