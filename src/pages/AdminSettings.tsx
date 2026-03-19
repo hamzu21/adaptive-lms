@@ -113,7 +113,7 @@ const AdminSettings = () => {
               { label: "Platform", value: "AdaptLearn LMS" },
               { label: "Role", value: "Administrator" },
               { label: "Authentication", value: "Email & Password" },
-              { label: "Database", value: "Lovable Cloud" },
+              { label: "Database", value: "Supabase" },
             ].map((item) => (
               <div key={item.label} className="flex justify-between items-center py-2 border-b border-border last:border-0">
                 <span className="text-sm text-muted-foreground">{item.label}</span>

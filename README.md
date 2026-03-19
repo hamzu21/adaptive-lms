@@ -1,73 +1,53 @@
-# Welcome to your Lovable project
+# KFUEITLMS (AdaptLearn LMS)
 
-## Project info
+KFUEITLMS is an AI-powered adaptive learning web application built with React + TypeScript. It uses Supabase for authentication and data, and provides role-based dashboards for students, teachers, parents, and administrators.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## What’s included
 
-## How can I edit this code?
+- Role-based access with these sections:
+  - `student` dashboard: courses, course details, assessments, assignments, progress, AI chat, and live classes.
+  - `teacher` dashboard: courses, classes/enrollments, assessments, assignments, analytics, profile, and live classes.
+  - `parent` dashboard: overview and profile.
+  - `admin` dashboard: users, courses, enrollments, activity logs, and settings.
+- Personalized/adaptive learning experience (AI-driven UI flows and adaptive features).
+- Teacher analytics + activity logging.
+- Live class and chat features.
 
-There are several ways of editing your application.
+## Tech stack
 
-**Use Lovable**
+- Vite + React + TypeScript
+- Tailwind CSS + shadcn-ui
+- React Router (client-side routing)
+- TanStack React Query
+- Supabase (auth + database)
+- Framer Motion, Recharts (UI/visualization)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Prerequisites
 
-Changes made via Lovable will be committed automatically to this repo.
+- Node.js and npm
+- A Supabase project
 
-**Use your preferred IDE**
+## Environment variables
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Create a `.env` file (or `.env.local`) in the project root with:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```bash
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_anon_key
+```
 
-Follow these steps:
+## Run locally
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open the URL shown in your terminal (Vite default is usually `http://localhost:8080` in this project).
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Build & test
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```bash
+npm run build
+npm test
+```
