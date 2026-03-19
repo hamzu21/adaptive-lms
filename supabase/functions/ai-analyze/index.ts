@@ -10,37 +10,91 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  console.log("AI-Analyze function started");
+
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("Missing authorization");
+    console.log(`Auth header present: ${!!authHeader}`);
+    
+    if (!authHeader?.startsWith("Bearer ")) {
+      console.error("Missing or invalid Authorization header");
+      return new Response(JSON.stringify({ error: "Unauthorized: Missing Bearer token" }), { 
+        status: 401, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const groqKey = Deno.env.get("GROQ_API_KEY");
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
-    if (authError || !claimsData?.claims) throw new Error("Unauthorized");
-    const user = { id: claimsData.claims.sub as string };
+    console.log("Environment check:", { 
+      hasUrl: !!supabaseUrl, 
+      hasAnon: !!supabaseAnonKey, 
+      hasGroq: !!groqKey 
+    });
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return new Response(JSON.stringify({ error: "Missing Supabase configuration" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { 
+        headers: { 
+          Authorization: authHeader,
+        } 
+      }
+    });
+
+    console.log("Verifying user token...");
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError) {
+      console.error("Auth error from getUser:", authError.message);
+      return new Response(JSON.stringify({ error: `Unauthorized: ${authError.message}` }), { 
+        status: 401, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+    
+    if (!user) {
+      console.error("No user found for token");
+      return new Response(JSON.stringify({ error: "Unauthorized: No user found" }), { 
+        status: 401, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    console.log(`User verified: ${user.id}`);
 
     // Fetch student performance data
+    console.log("Fetching student data...");
     const [enrollRes, attemptsRes, progressRes] = await Promise.all([
       supabase.from("enrollments").select("course_id, courses(id, title, subject)").eq("student_id", user.id),
       supabase.from("assessment_attempts").select("score, total_marks, assessment_id, completed_at, assessments(title, course_id, courses(title, subject))").eq("student_id", user.id).not("completed_at", "is", null).order("completed_at", { ascending: false }),
       supabase.from("lesson_progress").select("lesson_id, completed, lessons(id, title, course_id, position, courses(title, subject))").eq("student_id", user.id).eq("completed", true),
     ]);
 
+    if (enrollRes.error) console.error("Enrollment fetch error:", enrollRes.error);
+    if (attemptsRes.error) console.error("Attempts fetch error:", attemptsRes.error);
+    if (progressRes.error) console.error("Progress fetch error:", progressRes.error);
+
     const enrollments = enrollRes.data || [];
     const attempts = attemptsRes.data || [];
     const completedLessons = progressRes.data || [];
+
+    console.log(`Data summary: ${enrollments.length} enrollments, ${attempts.length} attempts, ${completedLessons.length} lessons completed`);
 
     // Get ALL lessons for enrolled courses (needed for finding incomplete ones)
     const courseIds = enrollments.map((e: any) => e.course_id);
     let allLessons: any[] = [];
     if (courseIds.length > 0) {
-      const { data } = await supabase.from("lessons").select("id, title, course_id, position, courses(title, subject)").in("course_id", courseIds).order("position", { ascending: true });
+      console.log(`Fetching lessons for ${courseIds.length} courses...`);
+      const { data, error: lessonError } = await supabase.from("lessons").select("id, title, course_id, position, courses(title, subject)").in("course_id", courseIds).order("position", { ascending: true });
+      if (lessonError) console.error("Lessons fetch error:", lessonError);
       allLessons = data || [];
     }
 
@@ -114,166 +168,96 @@ serve(async (req) => {
       );
 
     if (allCoursesCompleted && allLatestAttemptsPerfect) {
+      console.log("Returning perfect score summary");
       return new Response(
         JSON.stringify({
-          strengths: [
-            {
-              topic: "Overall Mastery",
-              reason: "All enrolled lessons are completed and your latest quiz attempts are perfect.",
-            },
-          ],
+          strengths: [{ topic: "Overall Mastery", reason: "All lessons are completed and scores are perfect." }],
           weaknesses: [],
           recommendations: [],
-          summary:
-            "Amazing work — you have completed all lessons and achieved perfect scores in your latest assessments.",
+          summary: "Amazing work! You've mastered everything currently assigned.",
           learningPath: [],
-          difficultyProfile: {
-            level: "advanced",
-            description: "You have mastered the current enrolled curriculum.",
-            adjustmentNote:
-              "Ask your teacher for advanced modules, project-based challenges, or higher-level courses.",
-          },
+          difficultyProfile: { level: "advanced", description: "Mastered curriculum", adjustmentNote: "Time for new challenges!" },
         }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!groqKey) {
+      console.error("GROQ_API_KEY is missing");
+      return new Response(JSON.stringify({ error: "AI configuration error: GROQ_API_KEY missing" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    console.log(`Performance summary length: ${performanceSummary.length}`);
+    console.log("Calling Groq API (Llama 3.3)...");
+    const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${groqKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "llama-3.3-70b-versatile",
         messages: [
           {
             role: "system",
-            content: `You are an educational AI tutor analyzing a student's learning performance. Based on their data, provide:
-1. "strengths": Array of {topic, reason} - subjects/courses where student excels
-2. "weaknesses": Array of {topic, reason} - subjects/courses needing improvement
-3. "recommendations": Array of {title, description, priority} - specific actionable learning recommendations (priority: high/medium/low)
-4. "summary": A brief 2-3 sentence motivational summary
-5. "learningPath": Array of recommended next steps, each with:
-   - "courseId": the course ID from the data
-   - "courseName": course name
-   - "lessonId": specific lesson ID to do next (from incompleteLessons)
-   - "lessonTitle": lesson title
-   - "reason": why this lesson is recommended now (1 sentence)
-   - "difficulty": recommended difficulty level ("review" for struggling students who should revisit basics, "standard" for on-track students, "challenge" for excelling students who should push ahead)
-   - "urgency": "high" (falling behind), "medium" (on track), "low" (ahead of pace)
-6. "difficultyProfile": Overall assessment of where the student is:
-   - "level": "beginner" | "intermediate" | "advanced"
-   - "description": 1 sentence summary of their learning level
-   - "adjustmentNote": specific advice on how to adjust difficulty
-
-Use the incompleteLessons data to recommend SPECIFIC real lessons. Prioritize courses where the student is struggling (low scores, low completion).
-If student has no data, provide encouraging defaults about getting started.
-Return ONLY valid JSON.`,
+            content: `You are an expert educational AI tutor. Analyze the student's performance data and provide a detailed, supportive, and actionable analysis.
+            Return a JSON object with the following structure:
+            {
+              "strengths": [{"topic": "string", "reason": "string"}],
+              "weaknesses": [{"topic": "string", "reason": "string"}],
+              "recommendations": [{"title": "string", "description": "string", "priority": "high|medium|low"}],
+              "summary": "string (a warm, encouraging 2-3 sentence overview)",
+              "learningPath": [{"courseId": "string", "lessonId": "string", "lessonTitle": "string", "reason": "string", "difficulty": "review|standard|challenge", "urgency": "high|medium|low"}],
+              "difficultyProfile": {"level": "beginner|intermediate|advanced", "description": "string", "adjustmentNote": "string"}
+            }
+            Ensure the recommendations are specific to the student's weak areas and the summary is written in the second person ("You").
+            Return ONLY the raw JSON object.`,
           },
           {
             role: "user",
-            content: `Analyze this student's performance data:\n${performanceSummary}`,
+            content: `Student Performance Summary: ${performanceSummary}`,
           },
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "analyze_performance",
-              description: "Return structured analysis of student performance with adaptive learning path",
-              parameters: {
-                type: "object",
-                properties: {
-                  strengths: {
-                    type: "array",
-                    items: { type: "object", properties: { topic: { type: "string" }, reason: { type: "string" } }, required: ["topic", "reason"] },
-                  },
-                  weaknesses: {
-                    type: "array",
-                    items: { type: "object", properties: { topic: { type: "string" }, reason: { type: "string" } }, required: ["topic", "reason"] },
-                  },
-                  recommendations: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string" },
-                        description: { type: "string" },
-                        priority: { type: "string", enum: ["high", "medium", "low"] },
-                      },
-                      required: ["title", "description", "priority"],
-                    },
-                  },
-                  summary: { type: "string" },
-                  learningPath: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        courseId: { type: "string" },
-                        courseName: { type: "string" },
-                        lessonId: { type: "string" },
-                        lessonTitle: { type: "string" },
-                        reason: { type: "string" },
-                        difficulty: { type: "string", enum: ["review", "standard", "challenge"] },
-                        urgency: { type: "string", enum: ["high", "medium", "low"] },
-                      },
-                      required: ["courseId", "courseName", "lessonId", "lessonTitle", "reason", "difficulty", "urgency"],
-                    },
-                  },
-                  difficultyProfile: {
-                    type: "object",
-                    properties: {
-                      level: { type: "string", enum: ["beginner", "intermediate", "advanced"] },
-                      description: { type: "string" },
-                      adjustmentNote: { type: "string" },
-                    },
-                    required: ["level", "description", "adjustmentNote"],
-                  },
-                },
-                required: ["strengths", "weaknesses", "recommendations", "summary", "learningPath", "difficultyProfile"],
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "analyze_performance" } },
+        response_format: { type: "json_object" },
+        temperature: 0.1,
       }),
     });
 
     if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
       const t = await aiResponse.text();
-      console.error("AI error:", aiResponse.status, t);
-      throw new Error("AI gateway error");
+      console.error("Groq API error:", aiResponse.status, t);
+      return new Response(JSON.stringify({ 
+        error: `Groq error ${aiResponse.status}`, 
+        details: t 
+      }), {
+        status: aiResponse.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    let analysis;
-    if (toolCall?.function?.arguments) {
-      analysis = JSON.parse(toolCall.function.arguments);
-    } else {
-      const content = aiData.choices?.[0]?.message?.content || "{}";
-      analysis = JSON.parse(content);
+    console.log("Groq responded successfully");
+    const content = aiData.choices?.[0]?.message?.content || "{}";
+    
+    // Attempt to extract JSON if it was returned with markdown markers
+    let jsonStr = content.trim();
+    if (jsonStr.startsWith("```json")) {
+      jsonStr = jsonStr.replace(/^```json/, "").replace(/```$/, "").trim();
+    } else if (jsonStr.startsWith("```")) {
+      jsonStr = jsonStr.replace(/^```/, "").replace(/```$/, "").trim();
     }
+
+    const analysis = JSON.parse(jsonStr);
 
     return new Response(JSON.stringify(analysis), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
-    console.error("ai-analyze error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+  } catch (e: any) {
+    console.error("Critical error in ai-analyze:", e.message);
+    return new Response(JSON.stringify({ error: e.message || "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

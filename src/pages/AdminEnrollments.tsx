@@ -33,6 +33,7 @@ interface EnrollmentRow {
   id: string;
   enrolled_at: string;
   studentName: string;
+  studentRollNumber: string;
   studentEmail: string;
   courseTitle: string;
   courseSubject: string;
@@ -62,14 +63,14 @@ const AdminEnrollments = () => {
 
       const [profilesRes, coursesRes] = await Promise.all([
         studentIds.length > 0
-          ? supabase.from("profiles").select("user_id, full_name").in("user_id", studentIds)
+          ? supabase.from("profiles").select("user_id, full_name, roll_number").in("user_id", studentIds)
           : { data: [] },
         courseIds.length > 0
           ? supabase.from("courses").select("id, title, subject").in("id", courseIds)
           : { data: [] },
       ]);
 
-      const profilesMap = new Map((profilesRes.data || []).map((p) => [p.user_id, p.full_name]));
+      const profilesMap = new Map((profilesRes.data || []).map((p) => [p.user_id, p]));
       const coursesMap = new Map((coursesRes.data || []).map((c) => [c.id, c]));
 
       return (data || []).map((e): EnrollmentRow => {
@@ -79,7 +80,8 @@ const AdminEnrollments = () => {
           enrolled_at: e.enrolled_at,
           student_id: e.student_id,
           course_id: e.course_id,
-          studentName: profilesMap.get(e.student_id) || "Unknown",
+          studentName: profilesMap.get(e.student_id)?.full_name || "Unknown",
+          studentRollNumber: profilesMap.get(e.student_id)?.roll_number || "N/A",
           studentEmail: "",
           courseTitle: course?.title || "Unknown",
           courseSubject: course?.subject || "",
@@ -100,7 +102,7 @@ const AdminEnrollments = () => {
       if (ids.length === 0) return [];
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, full_name")
+        .select("user_id, full_name, roll_number")
         .in("user_id", ids)
         .order("full_name");
       return profiles || [];
@@ -166,6 +168,7 @@ const AdminEnrollments = () => {
     const s = search.toLowerCase();
     return (
       e.studentName.toLowerCase().includes(s) ||
+      e.studentRollNumber.toLowerCase().includes(s) ||
       e.courseTitle.toLowerCase().includes(s) ||
       e.courseSubject.toLowerCase().includes(s)
     );
@@ -214,7 +217,12 @@ const AdminEnrollments = () => {
               <TableBody>
                 {filtered.map((e) => (
                   <TableRow key={e.id}>
-                    <TableCell className="font-medium text-sm">{e.studentName}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-sm">{e.studentName}</span>
+                        <span className="text-xs font-mono text-primary">{e.studentRollNumber}</span>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm">{e.courseTitle}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="text-xs">{e.courseSubject || "—"}</Badge>
@@ -279,7 +287,7 @@ const AdminEnrollments = () => {
                 <SelectContent>
                   {(students || []).map((s) => (
                     <SelectItem key={s.user_id} value={s.user_id}>
-                      {s.full_name || "Unnamed"}
+                      {s.full_name || "Unnamed"} {s.roll_number ? `(${s.roll_number})` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>

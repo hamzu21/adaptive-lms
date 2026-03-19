@@ -194,10 +194,28 @@ function ResultView({ attemptId, onBack }: { attemptId: string; onBack: () => vo
         .single();
       if (aErr) throw aErr;
 
-      const { data: responses } = await supabase
+      const { data: responses, error: rErr } = await supabase
         .from("attempt_responses")
-        .select("question_id, selected_option, is_correct, difficulty_level, questions!inner(question_text, options, correct_option, marks, difficulty)")
-        .eq("attempt_id", attemptId) as any;
+        .select(`
+          question_id, 
+          selected_option, 
+          is_correct, 
+          difficulty_level, 
+          questions!inner(
+            question_text, 
+            options, 
+            correct_option, 
+            marks, 
+            difficulty
+          )
+        `)
+        .eq("attempt_id", attemptId);
+
+      if (rErr) {
+        console.error("Error fetching responses:", rErr);
+        // Fallback to empty if join failed or other error
+        return { attempt, responses: [] };
+      }
 
       return { attempt, responses: responses || [] };
     },
@@ -244,56 +262,64 @@ function ResultView({ attemptId, onBack }: { attemptId: string; onBack: () => vo
       </div>
 
       <h3 className="font-semibold mb-4">Question Review</h3>
-      <div className="space-y-4">
-        {responses.map((r: any, i: number) => {
-          const q = r.questions;
-          const options = (Array.isArray(q?.options) ? q.options : []) as string[];
-          return (
-            <div key={r.question_id} className="bg-card rounded-xl border border-border p-5">
-              <div className="flex items-start gap-3 mb-3">
-                <span className={cn(
-                  "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
-                  r.is_correct ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"
-                )}>
-                  {i + 1}
-                </span>
-                <p className="text-sm font-medium flex-1">{q?.question_text}</p>
-                {(r.difficulty_level || q?.difficulty) && (
+      {responses.length === 0 ? (
+        <div className="bg-card rounded-xl border border-border p-12 text-center text-muted-foreground">
+          <AlertCircle className="w-8 h-8 mx-auto mb-3 opacity-20" />
+          <p className="text-sm font-medium">No question details available for this attempt.</p>
+          <p className="text-[10px] opacity-70">This could happen if the questions were modified or deleted after you completed the quiz.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {responses.map((r: any, i: number) => {
+            const q = r.questions;
+            const options = (Array.isArray(q?.options) ? q.options : []) as string[];
+            return (
+              <div key={r.question_id} className="bg-card rounded-xl border border-border p-5">
+                <div className="flex items-start gap-3 mb-3">
                   <span className={cn(
-                    "text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0",
-                    (r.difficulty_level || q?.difficulty) === "easy" ? "bg-emerald-500/10 text-emerald-600" :
-                    (r.difficulty_level || q?.difficulty) === "hard" ? "bg-red-500/10 text-red-600" :
-                    "bg-amber-500/10 text-amber-600"
+                    "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
+                    r.is_correct ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"
                   )}>
-                    {(r.difficulty_level || q?.difficulty)?.charAt(0).toUpperCase() + (r.difficulty_level || q?.difficulty)?.slice(1)}
+                    {i + 1}
                   </span>
-                )}
+                  <p className="text-sm font-medium flex-1">{q?.question_text}</p>
+                  {(r.difficulty_level || q?.difficulty) && (
+                    <span className={cn(
+                      "text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0",
+                      (r.difficulty_level || q?.difficulty) === "easy" ? "bg-emerald-500/10 text-emerald-600" :
+                      (r.difficulty_level || q?.difficulty) === "hard" ? "bg-red-500/10 text-red-600" :
+                      "bg-amber-500/10 text-amber-600"
+                    )}>
+                      {(r.difficulty_level || q?.difficulty)?.charAt(0).toUpperCase() + (r.difficulty_level || q?.difficulty)?.slice(1)}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2 ml-9">
+                  {options.map((opt: string, oIdx: number) => {
+                    const isCorrect = oIdx === q?.correct_option;
+                    const isSelected = oIdx === r.selected_option;
+                    return (
+                      <div
+                        key={oIdx}
+                        className={cn(
+                          "text-sm px-3 py-2 rounded-lg border",
+                          isCorrect ? "border-primary bg-primary/5 text-primary font-medium" :
+                          isSelected && !isCorrect ? "border-destructive bg-destructive/5 text-destructive" :
+                          "border-border text-muted-foreground"
+                        )}
+                      >
+                        {opt}
+                        {isCorrect && <span className="ml-2 text-xs">✓ Correct</span>}
+                        {isSelected && !isCorrect && <span className="ml-2 text-xs">✗ Your answer</span>}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="space-y-2 ml-9">
-                {options.map((opt: string, oIdx: number) => {
-                  const isCorrect = oIdx === q?.correct_option;
-                  const isSelected = oIdx === r.selected_option;
-                  return (
-                    <div
-                      key={oIdx}
-                      className={cn(
-                        "text-sm px-3 py-2 rounded-lg border",
-                        isCorrect ? "border-primary bg-primary/5 text-primary font-medium" :
-                        isSelected && !isCorrect ? "border-destructive bg-destructive/5 text-destructive" :
-                        "border-border text-muted-foreground"
-                      )}
-                    >
-                      {opt}
-                      {isCorrect && <span className="ml-2 text-xs">✓ Correct</span>}
-                      {isSelected && !isCorrect && <span className="ml-2 text-xs">✗ Your answer</span>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

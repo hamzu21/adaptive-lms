@@ -22,10 +22,12 @@ interface Props {
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
+  onDeleteAll: () => void;
 }
 
-const ChatConversationList = ({ conversations, activeId, loading, onSelect, onNew, onDelete }: Props) => {
+const ChatConversationList = ({ conversations, activeId, loading, onSelect, onNew, onDelete, onDeleteAll }: Props) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -41,88 +43,140 @@ const ChatConversationList = ({ conversations, activeId, loading, onSelect, onNe
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    setDeletingId(id);
-    onDelete(id);
-    setDeletingId(null);
+    if (window.confirm("Are you sure you want to delete this chat?")) {
+      setDeletingId(id);
+      await onDelete(id);
+      setDeletingId(null);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (window.confirm("Are you sure you want to delete ALL chats? This cannot be undone.")) {
+      setIsDeletingAll(true);
+      await onDeleteAll();
+      setIsDeletingAll(false);
+    }
   };
 
   return (
-    <div className="w-64 border-r border-border flex flex-col bg-muted/30">
-      <div className="p-3 border-b border-border space-y-2">
-        <Button onClick={onNew} variant="outline" size="sm" className="w-full gap-2">
+    <div className="w-full h-full flex flex-col bg-muted/10 backdrop-blur-md">
+      {/* Search & Actions */}
+      <div className="p-4 space-y-3 shrink-0">
+        <Button 
+          onClick={onNew} 
+          className="w-full gap-2 rounded-xl shadow-sm bg-background border border-border/50 hover:bg-muted text-foreground transition-all h-10"
+        >
           <Plus className="w-4 h-4" />
-          New Chat
+          <span className="text-xs font-bold uppercase tracking-wider">New Chat</span>
         </Button>
-        {conversations.length > 2 && (
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search chats..."
-              className="h-8 pl-8 pr-7 text-xs"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        )}
+        
+        <div className="relative group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search conversations..."
+            className="h-9 pl-9 pr-7 text-xs bg-muted/40 border-0 focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
-      <ScrollArea className="flex-1">
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-8 px-3">
-            {search ? "No matching conversations" : "No conversations yet"}
-          </p>
-        ) : (
-          <div className="p-2 space-y-1">
-            {filtered.map((c) => (
+
+      {/* List */}
+      <ScrollArea className="flex-1 px-2">
+        <div className="space-y-0.5 pb-2">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-primary/40" />
+              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Updating...</span>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="py-12 px-4 text-center">
+              <p className="text-[11px] text-muted-foreground font-medium">
+                {search ? "No matches found" : "No recent chats"}
+              </p>
+            </div>
+          ) : (
+            filtered.map((c) => (
               <button
                 key={c.id}
                 onClick={() => onSelect(c.id)}
                 className={cn(
-                  "w-full text-left rounded-lg px-3 py-2 text-sm transition-colors group relative",
+                  "w-full text-left rounded-xl px-3 py-3 transition-all group relative border border-transparent hover:border-border/40",
                   activeId === c.id
-                    ? "bg-primary/10 text-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    ? "bg-background shadow-sm border-border/60 text-foreground ring-1 ring-primary/5"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                 )}
               >
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate font-medium">{c.title}</span>
+                <div className="flex items-start gap-3">
+                  <div className={cn(
+                    "mt-0.5 w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border border-transparent transition-colors",
+                    activeId === c.id ? "bg-primary/5 border-primary/10" : "bg-muted group-hover:bg-background"
+                  )}>
+                    <MessageSquare className={cn(
+                      "w-3 h-3",
+                      activeId === c.id ? "text-primary" : "text-muted-foreground/60"
+                    )} />
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start gap-1">
+                      <span className="truncate text-xs font-bold tracking-tight">{c.title}</span>
+                    </div>
+                    {c.lesson_title && (
+                      <p className="text-[10px] text-muted-foreground truncate opacity-70 mt-0.5">
+                        {c.lesson_title}
+                      </p>
+                    )}
+                    <p className="text-[9px] text-muted-foreground/50 font-medium uppercase tracking-tighter mt-1">
+                      {format(new Date(c.updated_at), "MMM d, h:mm a")}
+                    </p>
+                  </div>
                 </div>
-                {c.lesson_title && (
-                  <p className="text-[10px] text-muted-foreground truncate mt-0.5 ml-5.5">
-                    {c.lesson_title}
-                  </p>
-                )}
-                <p className="text-[10px] text-muted-foreground mt-0.5 ml-5.5">
-                  {format(new Date(c.updated_at), "MMM d, h:mm a")}
-                </p>
+
+                {/* Delete Button */}
                 <button
                   onClick={(e) => handleDelete(e, c.id)}
-                  className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10"
-                  aria-label="Delete conversation"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive text-muted-foreground/40"
+                  aria-label="Delete chat"
                 >
                   {deletingId === c.id ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
                   ) : (
-                    <Trash2 className="w-3 h-3 text-destructive" />
+                    <Trash2 className="w-3 h-3" />
                   )}
                 </button>
               </button>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </ScrollArea>
+
+      {/* Sidebar Footer */}
+      {conversations.length > 0 && (
+        <div className="p-4 border-t border-border/40 shrink-0">
+          <Button 
+            onClick={handleClearAll}
+            disabled={isDeletingAll}
+            variant="ghost"
+            className="w-full gap-2 justify-start h-9 text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-xl transition-all"
+          >
+            {isDeletingAll ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-3.5 h-3.5" />
+            )}
+            <span className="text-[10px] font-bold uppercase tracking-wider">Clear all history</span>
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

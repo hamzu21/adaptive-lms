@@ -28,7 +28,12 @@ interface AdaptiveState {
   questionsAnswered: number;
   correctStreak: number;
   incorrectStreak: number;
-  servedQuestions: { questionId: string; difficulty: Difficulty; wasCorrect: boolean }[];
+  servedQuestions: { 
+    questionId: string; 
+    difficulty: Difficulty; 
+    wasCorrect: boolean;
+    selectedOption: number | null;
+  }[];
 }
 
 const DIFFICULTY_ORDER: Difficulty[] = ["easy", "medium", "hard"];
@@ -72,23 +77,15 @@ function pickNextQuestion(
 }
 
 async function validateAnswer(questionId: string, selectedOption: number): Promise<{ isCorrect: boolean; marks: number }> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error("Not authenticated");
+  const { data, error } = await supabase.functions.invoke("validate-answer", {
+    body: { questionId, selectedOption },
+  });
 
-  const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validate-answer`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ questionId, selectedOption }),
-    }
-  );
-
-  if (!response.ok) throw new Error("Validation failed");
-  return response.json();
+  if (error) {
+    console.error("Function error:", error);
+    throw new Error(error.message || "Validation failed");
+  }
+  return data;
 }
 
 interface AdaptiveQuizEngineProps {
@@ -179,7 +176,12 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
         setAdaptiveState((prev) => {
           const newServed = [
             ...prev.servedQuestions,
-            { questionId: currentQuestion.id, difficulty: currentQuestion.difficulty, wasCorrect: isCorrect },
+            { 
+              questionId: currentQuestion.id, 
+              difficulty: currentQuestion.difficulty, 
+              wasCorrect: isCorrect,
+              selectedOption: selectedAnswer
+            },
           ];
 
           const newCorrectStreak = isCorrect ? prev.correctStreak + 1 : 0;
@@ -209,8 +211,10 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
         setCorrectOptionIdx(null);
         setIsValidating(false);
       }, 1500);
-    } catch {
-      toast.error("Failed to validate answer");
+    } catch (err: any) {
+      console.error("Validation error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to validate answer";
+      toast.error(errorMessage === "Validation failed" ? "Quiz validation function not found. Please deploy edge functions." : errorMessage);
       setIsValidating(false);
     }
   }, [selectedAnswer, currentQuestion, isValidating]);
@@ -242,7 +246,7 @@ export default function AdaptiveQuizEngine({ assessmentId, userId, onBack, onCom
         return {
           attempt_id: attempt.id,
           question_id: sq.questionId,
-          selected_option: null,
+          selected_option: sq.selectedOption,
           is_correct: sq.wasCorrect,
           difficulty_level: sq.difficulty,
         };

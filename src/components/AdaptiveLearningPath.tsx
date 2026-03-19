@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useAIAnalysis, type LearningPathItem, type DifficultyProfile } from "@/components/AIInsightsPanel";
+import { useAIAnalysis, type LearningPathItem, type DifficultyProfile } from "@/hooks/useAIAnalysis";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
@@ -92,12 +92,12 @@ function LearningPathStep({ item, index }: { item: LearningPathItem; index: numb
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className="text-sm font-semibold truncate">{item.lessonTitle}</span>
-            <Badge variant="outline" className={cn("text-[10px] shrink-0", diff.color)}>
+            <span className="text-sm font-semibold">{item.lessonTitle}</span>
+            <Badge variant="outline" className={cn("text-[10px] w-fit h-auto whitespace-normal py-0.5", diff.color)}>
               <DiffIcon className="w-3 h-3 mr-1" />
               {diff.label}
             </Badge>
-            <Badge variant="outline" className={cn("text-[10px] shrink-0", urg.color)}>
+            <Badge variant="outline" className={cn("text-[10px] w-fit h-auto whitespace-normal py-0.5", urg.color)}>
               {urg.label}
             </Badge>
           </div>

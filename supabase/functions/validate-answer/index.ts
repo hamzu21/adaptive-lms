@@ -18,8 +18,10 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
+    console.log(`Authorization header present: ${!!authHeader}`);
     if (!authHeader?.startsWith("Bearer ")) {
-      throw new Error("Missing authorization");
+      console.error("Missing or invalid Authorization header");
+      throw new Error("Unauthorized: Missing Bearer token");
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -27,13 +29,26 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     // Verify the user
+    console.log("Verifying user token...");
     const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user }, error: authError } = await anonClient.auth.getUser();
-    if (authError || !user) throw new Error("Unauthorized");
+    
+    if (authError) {
+      console.error("Auth error from getUser:", authError.message);
+      throw new Error(`Unauthorized: ${authError.message}`);
+    }
+    
+    if (!user) {
+      console.error("No user found for token");
+      throw new Error("Unauthorized: No user found");
+    }
+
+    console.log(`User verified: ${user.id}`);
 
     const { questionId, selectedOption } = AnswerSchema.parse(await req.json());
+    console.log(`Validating question ${questionId} with option ${selectedOption} for user ${user.id}`);
 
     // Use service role to read correct_option (bypasses RLS)
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
@@ -43,24 +58,29 @@ Deno.serve(async (req) => {
       .eq("id", questionId)
       .single();
 
-    if (qErr || !question) throw new Error("Question not found");
+    if (qErr) {
+      console.error("Database error fetching question:", qErr);
+      throw new Error(`Question fetch failed: ${qErr.message}`);
+    }
+    
+    if (!question) {
+      console.error(`Question not found: ${questionId}`);
+      throw new Error("Question not found in database");
+    }
 
     const isCorrect = selectedOption === question.correct_option;
+    console.log(`Result: ${isCorrect ? "Correct" : "Incorrect"}`);
 
     return new Response(
       JSON.stringify({ isCorrect, marks: question.marks }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return new Response(
-        JSON.stringify({ error: "Invalid input", details: error.errors }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+  } catch (err: any) {
+    console.error("Validation error:", err.message);
+    const status = err.message?.includes("Unauthorized") ? 401 : 400;
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: err.message }),
+      { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

@@ -51,15 +51,25 @@ function UserRow({ u, currentUserId }: { u: AdminUser; currentUserId: string }) 
             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(false)}><X className="w-3.5 h-3.5" /></Button>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-sm">{u.fullName || "—"}</span>
-            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setEditName(u.fullName); setEditing(true); }}>
-              <Edit2 className="w-3 h-3 text-muted-foreground" />
-            </Button>
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-sm">{u.fullName || "—"}</span>
+              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setEditName(u.fullName); setEditing(true); }}>
+                <Edit2 className="w-3 h-3 text-muted-foreground" />
+              </Button>
+            </div>
+            {u.role === "student" && u.rollNumber && (
+              <span className="text-[10px] font-mono text-primary bg-primary/5 px-1 rounded w-fit">
+                {u.rollNumber}
+              </span>
+            )}
           </div>
         )}
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
+      <TableCell>
+        {u.rollNumber || "—"}
+      </TableCell>
       <TableCell>
         <Select
           value={u.role}
@@ -158,6 +168,7 @@ const AdminUsers = () => {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Roll Number</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Last Sign In</TableHead>
                   <TableHead>Joined</TableHead>

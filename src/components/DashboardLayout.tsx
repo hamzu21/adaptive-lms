@@ -18,6 +18,7 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
   title: string;
   navItems: NavItem[];
+  noPadding?: boolean;
 }
 
 const SidebarContent = ({
@@ -85,7 +86,7 @@ const SidebarContent = ({
   </>
 );
 
-const DashboardLayout = ({ children, title, navItems }: DashboardLayoutProps) => {
+const DashboardLayout = ({ children, title, navItems, noPadding }: DashboardLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, role, signOut } = useAuth();
@@ -169,7 +170,10 @@ const DashboardLayout = ({ children, title, navItems }: DashboardLayoutProps) =>
           <NotificationBell />
         </header>
         <main
-          className="flex-1 overflow-y-auto pb-20 lg:pb-6"
+          className={cn(
+            "flex-1 overflow-y-auto shrink-0",
+            noPadding ? "pb-16 lg:pb-0 overflow-hidden" : "pb-20 lg:pb-6"
+          )}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
@@ -180,7 +184,7 @@ const DashboardLayout = ({ children, title, navItems }: DashboardLayoutProps) =>
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: direction * 30 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="p-4 sm:p-6"
+              className={cn("h-full", !noPadding && "p-4 sm:p-6")}
             >
               {children}
             </motion.div>

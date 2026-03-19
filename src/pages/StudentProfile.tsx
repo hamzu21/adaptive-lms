@@ -37,7 +37,7 @@ const StudentProfile = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("full_name, avatar_url, expertise")
+        .select("full_name, avatar_url, expertise, roll_number")
         .eq("user_id", user!.id)
         .single();
       if (error) throw error;
@@ -128,6 +128,13 @@ const StudentProfile = () => {
               <Label htmlFor="fullName">Full Name</Label>
               <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" />
             </div>
+            {profile?.roll_number && (
+              <div className="space-y-2">
+                <Label>Roll Number</Label>
+                <Input value={profile.roll_number} readOnly className="bg-muted font-mono" />
+                <p className="text-[10px] text-muted-foreground">This is your unique identifiers assigned by the system.</p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="bio">Bio</Label>
               <Textarea id="bio" value={expertise} onChange={(e) => setExpertise(e.target.value)} placeholder="Tell us about yourself, your interests, and goals..." rows={4} />

@@ -597,6 +597,7 @@ export type Database = {
           expertise: string
           full_name: string
           id: string
+          roll_number: string | null
           updated_at: string
           user_id: string
         }
@@ -606,6 +607,7 @@ export type Database = {
           expertise?: string
           full_name?: string
           id?: string
+          roll_number?: string | null
           updated_at?: string
           user_id: string
         }
@@ -615,6 +617,7 @@ export type Database = {
           expertise?: string
           full_name?: string
           id?: string
+          roll_number?: string | null
           updated_at?: string
           user_id?: string
         }

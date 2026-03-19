@@ -15,7 +15,7 @@ const JitsiMeetRoom = ({ roomId, displayName, onClose, onConferenceJoined }: Jit
     const loadJitsi = () => {
       if (!containerRef.current) return;
 
-      const domain = "meet.jit.si";
+      const domain = "meet.ffmuc.net";
       const options = {
         roomName: roomId,
         parentNode: containerRef.current,
@@ -30,10 +30,15 @@ const JitsiMeetRoom = ({ roomId, displayName, onClose, onConferenceJoined }: Jit
           lobbyModeEnabled: false,
           enableLobbyChat: false,
           hideLobbyButton: true,
+          disableRemoteMute: false,
+          remoteVideoMenu: {
+            disableKick: false,
+          },
         },
         interfaceConfigOverwrite: {
           SHOW_JITSI_WATERMARK: false,
           SHOW_WATERMARK_FOR_GUESTS: false,
+          DEFAULT_REMOTE_DISPLAY_NAME: "Scholar",
           TOOLBAR_BUTTONS: [
             "microphone",
             "camera",
@@ -59,10 +64,10 @@ const JitsiMeetRoom = ({ roomId, displayName, onClose, onConferenceJoined }: Jit
       });
     };
 
-    // Load the Jitsi IFrame API script if not already loaded
+    // Load the Jitsi IFrame API script from the new domain
     if (!(window as any).JitsiMeetExternalAPI) {
       const script = document.createElement("script");
-      script.src = "https://meet.jit.si/external_api.js";
+      script.src = "https://meet.ffmuc.net/external_api.js";
       script.async = true;
       script.onload = loadJitsi;
       document.head.appendChild(script);

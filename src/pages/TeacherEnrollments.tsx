@@ -24,7 +24,7 @@ const TeacherEnrollments = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
-  const [studentEmail, setStudentEmail] = useState("");
+  const [studentRollNumber, setStudentRollNumber] = useState("");
 
   // Fetch teacher's courses
   const { data: courses } = useQuery({
@@ -48,7 +48,7 @@ const TeacherEnrollments = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("enrollments")
-        .select("id, student_id, enrolled_at")
+        .select("id, student_id, enrolled_at, courses(title)")
         .eq("course_id", selectedCourseId)
         .order("enrolled_at", { ascending: false });
       if (error) throw error;
@@ -58,62 +58,33 @@ const TeacherEnrollments = () => {
       const studentIds = data.map((e) => e.student_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, full_name")
+        .select("user_id, full_name, roll_number")
         .in("user_id", studentIds);
 
-      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p.full_name]));
+      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
       return data.map((e) => ({
         ...e,
-        studentName: profileMap.get(e.student_id) || "Unknown",
+        studentName: profileMap.get(e.student_id)?.full_name || "Unknown",
+        rollNumber: profileMap.get(e.student_id)?.roll_number || "N/A",
       }));
     },
   });
-
-  // Enroll student by email
   const enrollStudent = useMutation({
     mutationFn: async () => {
       if (!selectedCourseId) throw new Error("Select a course first");
-      if (!studentEmail.trim()) throw new Error("Enter a student email");
+      if (!studentRollNumber.trim()) throw new Error("Enter a student roll number");
 
-      // Find user by email — we need to look up via profiles + auth
-      // Since we can't query auth.users, we'll search profiles by matching
-      // We need a different approach: use a DB function or search by user_id
-      // For now, let's look up the student via their profile
-      // Actually, we need to find user by email. Let's use a simpler approach:
-      // Query all student-role users and match by checking profiles
-      
-      // First, find all users with student role
-      const { data: studentRoles, error: roleErr } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "student");
-      if (roleErr) throw roleErr;
-
-      if (!studentRoles || studentRoles.length === 0) throw new Error("No students found in the system");
-
-      // Now we need to match by email. Since email is in auth.users (not accessible),
-      // we'll create a workaround by storing email lookup. For now, let's use
-      // a direct enrollment by matching profile name or using the student user_id approach.
-      // 
-      // Better approach: search profiles for a matching name/email pattern
-      // Since we stored full_name in profiles, let's search by that
-      const { data: matchingProfiles, error: profErr } = await supabase
+      // Search profile by roll number (case-insensitive)
+      const { data: match, error: profErr } = await supabase
         .from("profiles")
-        .select("user_id, full_name")
-        .in("user_id", studentRoles.map((r) => r.user_id));
+        .select("user_id")
+        .ilike("roll_number", studentRollNumber.trim())
+        .maybeSingle();
+
       if (profErr) throw profErr;
+      if (!match) throw new Error(`Student with roll number "${studentRollNumber}" not found.`);
 
-      // Try to find student - match by full_name or treat input as user_id
-      const match = matchingProfiles?.find(
-        (p) => p.full_name.toLowerCase() === studentEmail.trim().toLowerCase()
-      );
-
-      // If no name match, try treating input as a user_id directly
-      const studentId = match?.user_id || (
-        studentRoles.some((r) => r.user_id === studentEmail.trim()) ? studentEmail.trim() : null
-      );
-
-      if (!studentId) throw new Error("Student not found. Enter the student's full name as registered.");
+      const studentId = match.user_id;
 
       // Check if already enrolled
       const { data: existing } = await supabase
@@ -132,7 +103,7 @@ const TeacherEnrollments = () => {
     },
     onSuccess: () => {
       toast.success("Student enrolled successfully!");
-      setStudentEmail("");
+      setStudentRollNumber("");
       queryClient.invalidateQueries({ queryKey: ["course-enrollments", selectedCourseId] });
     },
     onError: (err: any) => toast.error(err.message),
@@ -181,9 +152,9 @@ const TeacherEnrollments = () => {
             </h2>
             <div className="space-y-3">
               <Input
-                placeholder="Student's full name"
-                value={studentEmail}
-                onChange={(e) => setStudentEmail(e.target.value)}
+                placeholder="Roll Number (e.g. STU-1001)"
+                value={studentRollNumber}
+                onChange={(e) => setStudentRollNumber(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && enrollStudent.mutate()}
               />
               <Button
@@ -195,7 +166,7 @@ const TeacherEnrollments = () => {
                 {enrollStudent.isPending ? "Enrolling..." : "Enroll Student"}
               </Button>
               <p className="text-xs text-muted-foreground">
-                Enter the student's registered full name to enroll them.
+                Enter the student's auto-generated roll number to enroll them.
               </p>
             </div>
           </div>
@@ -224,9 +195,14 @@ const TeacherEnrollments = () => {
                       </div>
                       <div>
                         <p className="text-sm font-medium">{e.studentName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Enrolled {new Date(e.enrolled_at).toLocaleDateString()}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-primary">
+                            {e.rollNumber}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Enrolled {new Date(e.enrolled_at).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
                     </div>
                     <Button

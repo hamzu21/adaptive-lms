@@ -119,6 +119,17 @@ export function useChatPersistence() {
     [activeConversationId]
   );
 
+  // Delete all conversations for current user
+  const deleteAllConversations = useCallback(async () => {
+    if (!user) return;
+    const { error } = await supabase.from("chat_conversations").delete().eq("student_id", user.id);
+    if (!error) {
+      setConversations([]);
+      setActiveConversationId(null);
+      setMessages([]);
+    }
+  }, [user]);
+
   return {
     conversations,
     activeConversationId,
@@ -131,5 +142,6 @@ export function useChatPersistence() {
     startNewChat,
     saveMessage,
     deleteConversation,
+    deleteAllConversations,
   };
 }

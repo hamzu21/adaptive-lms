@@ -8,6 +8,7 @@ export interface AdminUser {
   email: string;
   fullName: string;
   avatarUrl: string | null;
+  rollNumber: string | null;
   role: string;
   createdAt: string;
   lastSignIn: string | null;

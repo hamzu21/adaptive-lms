@@ -72,7 +72,7 @@ serve(async (req) => {
       // Get all profiles and roles
       const userIds = authUsers.users.map((u: any) => u.id);
       const [profilesRes, rolesRes] = await Promise.all([
-        adminClient.from("profiles").select("user_id, full_name, avatar_url").in("user_id", userIds),
+        adminClient.from("profiles").select("user_id, full_name, avatar_url, roll_number").in("user_id", userIds),
         adminClient.from("user_roles").select("user_id, role").in("user_id", userIds),
       ]);
 
@@ -84,6 +84,7 @@ serve(async (req) => {
         email: u.email,
         fullName: profilesMap.get(u.id)?.full_name || "",
         avatarUrl: profilesMap.get(u.id)?.avatar_url || null,
+        rollNumber: profilesMap.get(u.id)?.roll_number || null,
         role: rolesMap.get(u.id) || "student",
         createdAt: u.created_at,
         lastSignIn: u.last_sign_in_at,
@@ -92,7 +93,9 @@ serve(async (req) => {
       if (params.search) {
         const s = params.search.toLowerCase();
         users = users.filter((u: any) =>
-          u.email?.toLowerCase().includes(s) || u.fullName?.toLowerCase().includes(s)
+          u.email?.toLowerCase().includes(s) || 
+          u.fullName?.toLowerCase().includes(s) ||
+          (u.rollNumber && u.rollNumber.toLowerCase().includes(s))
         );
       }
 
