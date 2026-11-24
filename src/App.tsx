@@ -42,7 +42,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter basename="/adaptive-lms">
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
